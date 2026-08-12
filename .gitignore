@@ -1,0 +1,23 @@
+# Local config manager backups — generated data, not source code.
+# Already has its own dedicated backup/rollback system inside the app;
+# doesn't need to live in git history too.
+backups/
+
+# Local-only quick links (personal bookmarks, explicitly not synced to
+# the VPS per the app's own design)
+quick_links.json
+
+# Python
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Just in case — never commit anything that looks like a real secret
+*.pem
+*.key
+*_rsa
+*_rsa.pub
+.env

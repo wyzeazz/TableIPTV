@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For Artists — The Table IPTV</title>
+<link rel="icon" type="image/png" href="https://tableip.tv/favicon.png">
+<style>
+  body {
+    margin: 0;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 24px 90px;
+  }
+  .back {
+    display: inline-block;
+    margin-bottom: 32px;
+    color: #5cc0cd;
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 14px;
+  }
+  .back:hover { text-decoration: underline; }
+
+  h1 {
+    color: #ffcc00;
+    font-family: monospace;
+    letter-spacing: .02em;
+    font-size: 34px;
+    margin: 0 0 14px;
+    line-height: 1.25;
+  }
+  .lede {
+    font-size: 17px;
+    color: #ccc;
+    max-width: 520px;
+    margin: 0 0 28px;
+  }
+  .watch-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffcc00;
+    color: #111;
+    text-decoration: none;
+    font-family: monospace;
+    font-weight: bold;
+    padding: 13px 22px;
+    border-radius: 6px;
+    font-size: 15px;
+  }
+  .watch-live:hover { filter: brightness(1.08); }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ff3b3b;
+    display: inline-block;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+  }
+
+  .trust-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 36px 0 44px;
+  }
+  .trust-chip {
+    background: #232323;
+    border: 1px solid #3a3a3a;
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-family: monospace;
+    font-size: 12.5px;
+    color: #ccc;
+  }
+  .trust-chip strong { color: #ffcc00; }
+
+  h2 {
+    color: #ffcc00;
+    font-family: monospace;
+    font-size: 18px;
+    margin: 48px 0 18px;
+    letter-spacing: .02em;
+  }
+  p { color: #ccc; font-size: 15px; }
+
+  .steps {
+    display: grid;
+    gap: 14px;
+  }
+  .step {
+    background: #232323;
+    border-left: 4px solid #ffcc00;
+    border-radius: 4px;
+    padding: 16px 20px;
+  }
+  .step h3 {
+    margin: 0 0 6px;
+    color: #fff;
+    font-family: monospace;
+    font-size: 15px;
+  }
+  .step p { margin: 0; font-size: 14px; color: #bbb; }
+
+  .model-box {
+    background: #232323;
+    border-radius: 6px;
+    padding: 22px 24px;
+  }
+  .model-box p { margin: 0 0 12px; }
+  .model-box p:last-child { margin-bottom: 0; }
+  .model-box a { color: #5cc0cd; }
+
+  .cta-box {
+    background: #232323;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 26px 24px;
+    margin-top: 12px;
+  }
+  .cta-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .cta-link {
+    display: inline-block;
+    background: #ffcc00;
+    color: #111;
+    text-decoration: none;
+    font-family: monospace;
+    font-weight: bold;
+    padding: 11px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .cta-link.secondary {
+    background: transparent;
+    color: #5cc0cd;
+    border: 1px solid #5cc0cd;
+  }
+  .cta-link:hover { filter: brightness(1.08); }
+
+  .foot {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid #333;
+    font-size: 13px;
+    color: #777;
+  }
+  .foot a { color: #5cc0cd; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/" class="back">&larr; The Table IPTV</a>
+
+  <h1>Your video, on real television.<br>No algorithm. No ads. Real people.</h1>
+  <p class="lede">The Table is a self-hosted, 24/7 music video channel for
+  independent artists. One person runs it. Every video credits you by
+  name and links straight to your store — Bandcamp, merch, wherever you
+  actually get paid.</p>
+
+  <a href="https://tableip.tv" class="watch-live" target="_blank" rel="noopener">
+    <span class="live-dot"></span> Watch The Table — Live Right Now
+  </a>
+
+  <div class="trust-row">
+    <div class="trust-chip">📡 <strong>Live 24/7</strong> — not a pitch deck, a real channel</div>
+    <div class="trust-chip">💰 <strong>Revenue share</strong> — real numbers, published openly</div>
+    <div class="trust-chip">⏱️ <strong>24hr takedown</strong> — real reply, no bot</div>
+  </div>
+
+  <h2>How It Works</h2>
+  <div class="steps">
+    <div class="step">
+      <h3>You submit a video</h3>
+      <p>One song or several — whatever you want in rotation. No exclusivity, no contract lock-in.</p>
+    </div>
+    <div class="step">
+      <h3>It airs with your name and a real link</h3>
+      <p>Every video burns in the artist and song title on screen, with a
+      direct click-through to wherever you actually sell your music.</p>
+    </div>
+    <div class="step">
+      <h3>It gets watched — and the split is real</h3>
+      <p>Donations run the channel first, then split evenly between
+      artists and the person running it — with artists uncapped as the
+      channel grows. Full breakdown below.</p>
+    </div>
+  </div>
+
+  <h2>The Honest Model</h2>
+  <div class="model-box">
+    <p>The Table runs on viewer donations, not ads, not investors. Every
+    dollar's path is published, tier by tier, with real numbers — not
+    marketing language.</p>
+    <p>Short version: operating costs come off the top, then everything
+    else splits evenly between the founder's salary and the artist pool
+    — and the artist pool has no ceiling. It keeps growing as the
+    channel grows.</p>
+    <p><a href="/financials.html" target="_blank" rel="noopener">Read the full financial model &rarr;</a></p>
+  </div>
+
+  <h2>Submit Your Music</h2>
+  <div class="cta-box">
+    <p>Fill out the acquisition form with your video file details, or
+    just email directly — either way, a real person reads it and
+    replies. No form-letter, no algorithm deciding.</p>
+    <div class="cta-links">
+      <a href="/acquisition.pdf" target="_blank" rel="noopener" class="cta-link">Acquisition Form</a>
+      <a href="mailto:tableiptv@gmail.com" class="cta-link secondary">Email Directly</a>
+    </div>
+  </div>
+
+  <div class="foot">
+    Questions, concerns, or a takedown request?
+    <a href="mailto:tableiptv@gmail.com">tableiptv@gmail.com</a> —
+    real reply within 24 hours, always. &middot;
+    <a href="/dmca.html">DMCA Policy</a>
+  </div>
+</div>
+</body>
+</html>
