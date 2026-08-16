@@ -557,7 +557,7 @@
 
     <aside class="side-panel collapsed" id="community-panel">
       <div class="top10-header" onclick="togglePanelCollapse('community-panel')">
-        <div class="top10-header-title"><span class="top10-star">🌐</span> COMMUNITY TOP 10</div>
+        <div class="top10-header-title"><span class="top10-star">🌐</span> NEXT MONTH'S TOP 10</div>
         <span class="collapse-icon" id="community-panel-icon">+</span>
       </div>
       <ol class="top10-list" id="top10-inline-list"><li class="top10-empty">Loading...</li></ol>
@@ -584,7 +584,7 @@
          height specifically, not to whichever side panel happens to be
          tallest — that was pushing it off-screen as columns grew. -->
     <footer class="site-footer" id="main-footer">
-      <p class="site-footer-copy" id="site-footer-copy">2026 The Table IPTV • All Our Rights Preserved</p>
+      <p class="site-footer-copy" id="site-footer-copy">2026 The Table IPTV • No Ads. No Algorithm. Go Get Enshittified Elsewhere 🖕</p>
     </footer>
   </div>
 
@@ -1058,23 +1058,21 @@
 
   // ---------- Guide ("Up Next") — fetched on demand only, when opened ----------
   // ---------- Next Event countdown ----------
-  // PLACEHOLDER schedule — adjust days/times once the real block schedule
-  // is finalized in ErsatzTV. day: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+  // REAL, current schedule only — nightly 8pm Top 10, every day. The
+  // full weekend/New Artists block schedule is planned but NOT yet
+  // running in ErsatzTV; showing it here would advertise events that
+  // aren't actually airing, which doesn't match this site's whole
+  // honesty ethos. Expand this back out once that real schedule build
+  // actually happens. day: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
   // (matches JS Date.getDay()). Times are in 24h local time for `timezone`.
   const NEXT_EVENTS_SCHEDULE = [
-    { label: "🆕 NEW ARTISTS", day: 1, time: "09:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS", day: 1, time: "14:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS", day: 1, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10",      day: 2, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10",      day: 3, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10",      day: 4, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10",      day: 5, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 6, time: "09:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 6, time: "14:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 6, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 0, time: "09:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 0, time: "14:00", timezone: "America/Edmonton" },
-    { label: "🆕 NEW ARTISTS / TOP 10", day: 0, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 0, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 1, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 2, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 3, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 4, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 5, time: "20:00", timezone: "America/Edmonton" },
+    { label: "🔥 TOP 10", day: 6, time: "20:00", timezone: "America/Edmonton" },
   ];
 
   // Real current UTC offset (in minutes) for a given IANA timezone, using
@@ -1566,6 +1564,11 @@
         if (p['screen-border']) root.style.setProperty('--screen-border', p['screen-border']);
         if (p['screen-radius']) root.style.setProperty('--screen-radius', p['screen-radius']);
       }
+      // Wallpaper is now handled server-side by the config manager
+      // (real file swap via SFTP, same proven pattern as Emergency
+      // Mode) — not by client-side JS. Two different JS/CSS approaches
+      // were tried here and neither behaved reliably; reverted to the
+      // original, always-worked single wallpaper.jpg reference.
     } catch (e) {}
   }
 
@@ -1575,17 +1578,30 @@
   renderRecentlyPlayed();
 
   async function bootChannel() {
-    try {
-      const linkRes = await fetch('artist-links.json', { cache: 'no-store' });
-      if (linkRes.ok) artistLinkOverrides = await linkRes.json();
-    } catch (e) {}
+    // Real fix — artist-links.json and content.json don't actually
+    // depend on settings.json or each other; only XMLTV_URL genuinely
+    // needs SETTINGS resolved first (it reads SETTINGS.epg.url).
+    // Running the independent fetches in parallel, instead of one
+    // after another, removes real, stacked network latency that was
+    // delaying the guide showing correct data for several seconds on
+    // first load.
+    const linkPromise = fetch('artist-links.json', { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .catch(() => null);
 
     await loadSettings();
     lastKnownReloadSignal = SETTINGS?.forceReloadSignal || 0;
     resolveStreamConfig();
     loadTheme();
-    await loadContent();
-    xmltvProgrammes = await fetchXmltvProgrammes(); // once — FRAG_CHANGED drives everything from here
+
+    const [linkResult, , xmltvResult] = await Promise.all([
+      linkPromise,
+      loadContent(),
+      fetchXmltvProgrammes()
+    ]);
+
+    if (linkResult) artistLinkOverrides = linkResult;
+    xmltvProgrammes = xmltvResult;
     renderTop10();
 
     setInterval(renderRecentlyPlayed, 60000);
@@ -1598,6 +1614,18 @@
     // feature, not a glitch to guard against.
     setInterval(loadTheme, 120000);
     setInterval(loadContent, 120000);
+    // Live wallpaper refresh — the config manager swaps wallpaper.jpg's
+    // actual CONTENT server-side (same filename every time), but an
+    // already-open tab has no reason to re-fetch a static image URL on
+    // its own. This just forces a fresh, cache-bypassed reload of the
+    // SAME filename on the same interval as the theme/content refresh
+    // above — deliberately NOT theme-aware, doesn't decide which file to
+    // load (that's what caused real cross-browser issues in an earlier
+    // attempt). Always just re-shows whatever's actually on the server
+    // right now.
+    setInterval(() => {
+      document.body.style.backgroundImage = `url('/wallpaper.jpg?_=${Date.now()}')`;
+    }, 120000);
     // Settings refresh too, same pattern — lets things like cacheOffsetSeconds
     // take effect live from the config app without needing a page reload.
     // ALSO checks for a remote "push channel to everyone" signal: if the
