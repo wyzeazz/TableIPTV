@@ -1541,7 +1541,16 @@
         if (data.footer.launch) utLaunch.textContent = data.footer.launch;
       }
       if (data.loading?.text) loading.textContent = data.loading.text;
-      if (data.siteFooter?.copyright) document.getElementById("site-footer-copy").textContent = data.siteFooter.copyright;
+      // Real, randomized footer tagline — same pattern as Welcome
+      // Prompts. Supports a real array (one random line shown per
+      // page load); falls back to a single string for backward
+      // compatibility if content.json still has the old format.
+      if (Array.isArray(data.siteFooter?.copyright) && data.siteFooter.copyright.length) {
+        const lines = data.siteFooter.copyright;
+        document.getElementById("site-footer-copy").textContent = lines[Math.floor(Math.random() * lines.length)];
+      } else if (typeof data.siteFooter?.copyright === "string" && data.siteFooter.copyright) {
+        document.getElementById("site-footer-copy").textContent = data.siteFooter.copyright;
+      }
     } catch (e) {}
   }
 
@@ -1626,6 +1635,25 @@
     setInterval(() => {
       document.body.style.backgroundImage = `url('/wallpaper.jpg?_=${Date.now()}')`;
     }, 120000);
+    // Real, lightweight Emergency Mode check — closes a real, confirmed
+    // gap: the theme/content/wallpaper refreshes above only re-fetch
+    // data from INSIDE the already-loaded page, they never re-request
+    // the root document itself. Emergency Mode is a real, server-side
+    // FILE SWAP — only a genuinely fresh root request shows it. Without
+    // this, a viewer who simply waits during an outage might never
+    // actually see Emergency Mode activate, only someone who manually
+    // refreshes (F5) would. A full periodic reload would fix that, but
+    // would also re-trigger the Welcome Prompt age-gate every cycle —
+    // a real, bad experience for someone already legitimately
+    // watching. This checks ONLY for the real marker file's existence
+    // (cheap, no page impact) and only escalates to a real, full
+    // reload in the one specific case that actually needs it.
+    setInterval(async () => {
+      try {
+        const res = await fetch(`/index_EmergON.html?_=${Date.now()}`, { cache: "no-store", method: "HEAD" });
+        if (res.ok) window.location.reload();
+      } catch (e) {}
+    }, 180000);
     // Settings refresh too, same pattern — lets things like cacheOffsetSeconds
     // take effect live from the config app without needing a page reload.
     // ALSO checks for a remote "push channel to everyone" signal: if the
