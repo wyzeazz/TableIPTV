@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Table — Study / Lo-Fi</title>
+<link rel="icon" type="image/png" href="https://tableip.tv/favicon.png">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #000;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  video {
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    display: block;
+    background: #000;
+  }
+  .loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    background: #000;
+    z-index: 20;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    text-align: center;
+    padding: 0 20px;
+  }
+  .error { color: #ff8080; }
+
+  /* Real, minimal hamburger menu — the only real UI on this page */
+  .hamburger {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 30;
+    width: 44px;
+    height: 44px;
+    background: rgba(0,0,0,.55);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+  .hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #fff;
+  }
+  .menu-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: flex-start;
+    justify-content: flex-end;
+    z-index: 40;
+  }
+  .menu-backdrop.open { display: flex; }
+  .menu-panel {
+    background: #111;
+    color: #fff;
+    padding: 20px;
+    margin: 64px 16px 0 0;
+    border-radius: 10px;
+    min-width: 200px;
+    font-family: Arial, sans-serif;
+  }
+  .menu-panel a {
+    display: block;
+    color: #5cc0cd;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 10px 0;
+  }
+  .menu-panel a:hover { text-decoration: underline; }
+  .sound-toggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 30;
+    width: 44px;
+    height: 44px;
+    background: rgba(0,0,0,.55);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">Loading Channel...</div>
+<video id="tv" autoplay muted playsinline></video>
+
+<button class="sound-toggle" id="sound-btn" onclick="toggleSound()" aria-label="Toggle sound">🔇</button>
+
+<button class="hamburger" onclick="toggleMenu(true)" aria-label="Menu">
+  <span></span><span></span><span></span>
+</button>
+
+<div class="menu-backdrop" id="menu-backdrop" onclick="toggleMenu(false)">
+  <div class="menu-panel" onclick="event.stopPropagation()">
+    <a href="/">&larr; Back to main channel</a>
+  </div>
+</div>
+
+<script>
+  // Real, hardcoded — this page is its own, separate, dedicated player,
+  // not sharing settings.json with the main channel.
+  const CHANNEL_NUMBER = "67";
+  const STREAM_BASE_URL = "https://tableip.tv/iptv/channel";
+  const STREAM = `${STREAM_BASE_URL}/${CHANNEL_NUMBER}.m3u8?mode=segmenter&_=${Date.now()}`;
+
+  const video = document.getElementById("tv");
+  const loading = document.getElementById("loading");
+  let hlsInstance = null;
+  let consecutiveFatalErrors = 0;
+  const MAX_CONSECUTIVE_FATAL_ERRORS = 3;
+  let offlineRetryDelayMs = 5000;
+  const OFFLINE_RETRY_BASE_MS = 5000;
+
+  function hideLoading() {
+    loading.style.display = "none";
+    loading.classList.remove("error");
+  }
+  function showError(msg) {
+    loading.style.display = "flex";
+    loading.classList.add("error");
+    loading.innerHTML = msg;
+  }
+
+  function toggleMenu(show) {
+    document.getElementById("menu-backdrop").classList.toggle("open", show);
+  }
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") toggleMenu(false);
+  });
+
+  // Real fix — video starts muted (required for autoplay to work in
+  // modern browsers), but this deliberately minimal page never had a
+  // way to actually turn sound back on. Real, simple toggle, matching
+  // the rest of the page's minimal style.
+  function toggleSound() {
+    video.muted = !video.muted;
+    document.getElementById("sound-btn").textContent = video.muted ? "🔇" : "🔊";
+  }
+
+  // Real, proven player logic — same core HLS setup and error handling
+  // confirmed working on the main channel, stripped of anything
+  // EPG/guide-related since a real, continuous 12hr lo-fi video has no
+  // meaningful "now playing" state to track.
+  function loadPlayer() {
+    const hlsJsAvailable = typeof Hls !== "undefined" && Hls.isSupported();
+
+    if (!hlsJsAvailable) {
+      if (video.canPlayType("application/vnd.apple.mpegurl") === "probably") {
+        video.src = STREAM;
+        video.addEventListener("loadeddata", hideLoading, { once: true });
+        video.play().catch(() => {});
+        return;
+      }
+      showError("Browser does not support HLS.");
+      return;
+    }
+
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+
+    hlsInstance = new Hls({ lowLatencyMode: false, enableWorker: true, backBufferLength: 30 });
+    hlsInstance.attachMedia(video);
+    hlsInstance.loadSource(STREAM);
+
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+      hideLoading();
+      video.play().catch(() => {});
+      consecutiveFatalErrors = 0;
+      offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
+    });
+
+    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+      if (!data.fatal) return;
+      switch (data.type) {
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          hlsInstance.recoverMediaError();
+          break;
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          consecutiveFatalErrors++;
+          if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
+            hlsInstance.destroy();
+            hlsInstance = null;
+            video.removeAttribute("src");
+            video.load();
+            showError("Stream Offline — retrying automatically...");
+            setTimeout(() => {
+              consecutiveFatalErrors = 0;
+              loadPlayer();
+            }, offlineRetryDelayMs);
+            offlineRetryDelayMs = Math.min(offlineRetryDelayMs * 2, 60000);
+          } else {
+            hlsInstance.startLoad();
+          }
+          break;
+        default:
+          hlsInstance.destroy();
+          hlsInstance = null;
+          showError("Stream Offline");
+      }
+    });
+  }
+
+  loadPlayer();
+</script>
+
+</body>
+</html>
