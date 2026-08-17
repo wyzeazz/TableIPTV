@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Table IPTV — Technical Difficulties</title>
+<link rel="icon" type="image/png" href="https://tableiptv.b-cdn.net/favicon.png">
+<style>
+  :root {
+    --frame-bg: #0a1a3a;
+    --knob-color: #00bfff;
+    --accent-glow: #00ff88;
+    --text-light: #c8e6ff;
+    --page-bg: #000d1a;
+    --highlight: #00bfff;
+    --font-base: Arial, sans-serif;
+    --font-mono: monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    font-family: var(--font-base);
+    color: var(--text-light);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 12px;
+  }
+  .player-frame {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    background: var(--frame-bg);
+    border: 8px solid #000;
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: 15px 15px rgba(0,0,0,.25);
+  }
+  .screen {
+    position: relative;
+    border: 6px solid black;
+    border-radius: 40px;
+    overflow: hidden;
+    aspect-ratio: 3 / 2;
+    background: #111;
+  }
+  /* Real SMPTE-style color bars, CSS-only */
+  .colorbars {
+    width: 100%;
+    height: 75%;
+    display: flex;
+  }
+  .colorbars div { flex: 1; }
+  .cb-1 { background: #c0c0c0; }
+  .cb-2 { background: #c0c000; }
+  .cb-3 { background: #00c0c0; }
+  .cb-4 { background: #00c000; }
+  .cb-5 { background: #c000c0; }
+  .cb-6 { background: #c00000; }
+  .cb-7 { background: #0000c0; }
+  .lowerbars { width: 100%; height: 25%; display: flex; }
+  .lb-1 { background: #0000c0; flex: 1; }
+  .lb-2 { background: #131313; flex: 1; }
+  .lb-3 { background: #c000c0; flex: 1; }
+  .lb-4 { background: #131313; flex: 1.5; }
+  .lb-5 { background: #00c0c0; flex: 1; }
+  .lb-6 { background: #131313; flex: 1; }
+  .lb-7 { background: #c0c0c0; flex: 1; }
+  .status-text {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #fff;
+    text-shadow: 0 0 6px rgba(0,0,0,.9);
+    letter-spacing: .05em;
+  }
+  .under-table {
+    width: 100%;
+    max-width: 800px;
+    margin-top: 24px;
+    background: #fff;
+    color: #1b1b1b;
+    border-radius: 10px;
+    padding: 20px 24px;
+  }
+  .under-table .ut-title {
+    font-family: var(--font-mono);
+    font-weight: bold;
+    font-size: 15px;
+    margin: 0 0 10px;
+  }
+  .under-table p { margin: 0 0 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="player-frame">
+  <div class="screen">
+    <div class="colorbars">
+      <div class="cb-1"></div><div class="cb-2"></div><div class="cb-3"></div>
+      <div class="cb-4"></div><div class="cb-5"></div><div class="cb-6"></div><div class="cb-7"></div>
+    </div>
+    <div class="lowerbars">
+      <div class="lb-1"></div><div class="lb-2"></div><div class="lb-3"></div>
+      <div class="lb-4"></div><div class="lb-5"></div><div class="lb-6"></div><div class="lb-7"></div>
+    </div>
+    <div class="status-text">We'll be right back — real update below</div>
+  </div>
+</div>
+
+<div class="under-table">
+  <p class="ut-title" id="ut-title">VPS ISSUES, OR I F"D UP ;)</p>
+</div>
+
+<script>
+  // Real, symmetric companion to the main site's Emergency Mode
+  // detection check. Same real problem in reverse: once Emergency
+  // Mode is turned off and the real site recovers, someone parked
+  // on THIS page during the outage would otherwise be stuck here
+  // until they happen to manually refresh. This page lives at the
+  // real root URL during the swap, so a plain reload correctly
+  // re-requests it — once Emergency Mode is off, that same real
+  // request picks up the restored, normal index.html automatically.
+  // Same real 3-minute interval as the main site's check, for
+  // consistency.
+  setInterval(async () => {
+    try {
+      const res = await fetch(`/index_EmergON.html?_=${Date.now()}`, { cache: "no-store", method: "HEAD" });
+      if (!res.ok) window.location.reload();
+    } catch (e) {}
+  }, 180000);
+</script>
+
+</body>
+</html>
