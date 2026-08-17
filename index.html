@@ -21,7 +21,7 @@
 <meta name="twitter:description" content="A free, self-hosted, not-for-profit music video channel. No ads, no algorithm, no scrubbing. Every track links directly to the artist's store.">
 <meta name="twitter:image" content="https://tableip.tv/og-image.jpg">
 
-<link rel="icon" type="image/png" href="https://tableip.tv/favicon.png">
+<link rel="icon" type="image/png" href="https://tableiptv.b-cdn.net/favicon.png">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
 <style>
   :root {
@@ -554,6 +554,7 @@
       </div>
       <ol class="top10-list" id="recent-list"><li class="top10-empty">Nothing played yet<br>this session.</li></ol>
     </aside>
+    <script>if (window.innerWidth >= 1200) { document.getElementById("recent-panel").classList.remove("collapsed"); document.getElementById("recent-panel-icon").textContent = "−"; }</script>
 
     <aside class="side-panel collapsed" id="community-panel">
       <div class="top10-header" onclick="togglePanelCollapse('community-panel')">
@@ -597,6 +598,7 @@
       </div>
       <ol class="top10-list" id="wishlist-list"><li class="top10-empty">No likes yet —<br>Pick your first!</li></ol>
     </aside>
+    <script>if (window.innerWidth >= 1200) { document.getElementById("wishlist-panel").classList.remove("collapsed"); document.getElementById("wishlist-panel-icon").textContent = "−"; }</script>
 
     <aside class="side-panel" id="under-table-panel">
       <div class="top10-header" onclick="togglePanelCollapse('under-table-panel')">
@@ -656,6 +658,8 @@
     <button class="info-close" onclick="toggleMenuModal(false)" aria-label="Close">×</button>
     <h2>Menu</h2>
     <ul class="menu-link-list">
+      <li><a href="/study.html">🎧 LOFI / Study Channel</a></li>
+      <li class="menu-separator"><hr></li>
       <li><button class="menu-link-btn" onclick="toggleHandedness()">Swap Controls Left / Right</button></li>
       <li class="menu-separator"><hr></li>
       <li><button class="menu-link-btn" onclick="toggleMenuModal(false); toggleInfoModal(true);">About The Table</button></li>
@@ -675,14 +679,14 @@
   // safe fallback if settings.json is ever unreachable, matching the exact
   // values that were hardcoded before this was externalized.
   let CHANNEL_NUMBER = "2";
-  let STREAM_BASE_URL = "https://tableip.tv/iptv/channel";
+  let STREAM_BASE_URL = "https://tableiptv.b-cdn.net/iptv/channel";
   let STREAM = "";
   let XMLTV_URL = "iptv/xmltv.xml";
   let CHANNEL_ID_PREFIX = "";
 
   function resolveStreamConfig(){
     CHANNEL_NUMBER = SETTINGS?.video?.channelNumber || "2";
-    STREAM_BASE_URL = SETTINGS?.video?.streamBaseUrl || "https://tableip.tv/iptv/channel";
+    STREAM_BASE_URL = SETTINGS?.video?.streamBaseUrl || "https://tableiptv.b-cdn.net/iptv/channel";
     STREAM = `${STREAM_BASE_URL}/${CHANNEL_NUMBER}.m3u8?mode=segmenter&_=${Date.now()}`;
     XMLTV_URL = SETTINGS?.epg?.url || "iptv/xmltv.xml";
     CHANNEL_ID_PREFIX = `C${CHANNEL_NUMBER}.`;
@@ -726,7 +730,7 @@
       return SETTINGS;
     } catch (e) {
       SETTINGS = {
-        video: { cacheOffsetSeconds: 55, maxRecent: 5, channelNumber: "2", streamBaseUrl: "https://tableip.tv/iptv/channel" },
+        video: { cacheOffsetSeconds: 55, maxRecent: 5, channelNumber: "2", streamBaseUrl: "https://tableiptv.b-cdn.net/iptv/channel" },
         ui: { wishlistMax: 10, communityTopMax: 10, recentlyPlayedMax: 5 },
         api: { base: '/api', topLimit: 10, refreshIntervalMs: 120000 },
         epg: { url: "iptv/xmltv.xml", acronyms: ["mf", "doom", "czarface", "prof", "madvillain", "dj", "mc", "xl", "tv", "uk", "us"] }
