@@ -1654,7 +1654,7 @@
     // reload in the one specific case that actually needs it.
     setInterval(async () => {
       try {
-        const res = await fetch(`/index_EmergON.html?_=${Date.now()}`, { cache: "no-store", method: "HEAD" });
+        const res = await fetch(`/index_EmergON.html?_=${Date.now()}&cid=${CLIENT_ID}`, { cache: "no-store", method: "HEAD" });
         if (res.ok) window.location.reload();
       } catch (e) {}
     }, 180000);
