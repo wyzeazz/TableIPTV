@@ -500,33 +500,33 @@
 
   /* ----- DESKTOP LAYOUT (wide screens) ----- */
   @media (min-width: 1200px) {
-    .page-grid { 
-      display: grid; 
-      grid-template-columns: 280px 1fr 280px; 
-      gap: 28px; 
-      max-width: 100%; 
-      margin: 0 auto; 
-      align-items: start; 
+    .page-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 28px;
+      max-width: 100%;
+      margin: 0 auto;
+      align-items: start;
       padding: 0 40px;
     }
-    .side-panel-group { 
-      grid-column: 1; 
+    .side-panel-group {
+      grid-column: 1;
       margin-top: 30px;
       width: 100%;
     }
-    .main-col { 
-      grid-column: 2; 
-      width: auto; 
-      order: 0; 
+    .main-col {
+      grid-column: 2;
+      width: auto;
+      order: 0;
     }
-    .right-panel-group { 
-      grid-column: 3; 
+    .right-panel-group {
+      grid-column: 3;
       margin-top: 30px;
       width: 100%;
     }
-    .side-panel { 
+    .side-panel {
       width: 100%;
-      margin-top: 0; 
+      margin-top: 0;
     }
   }
 
@@ -1177,13 +1177,13 @@
   }
 
   const WISHLIST_KEY = "table-wishlist";
-  function getClientId(){ 
-    let id = localStorage.getItem("table-client-id"); 
-    if (!id) { 
-      id = (crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}-${Math.random().toString(16).slice(2)}`); 
-      localStorage.setItem("table-client-id", id); 
-    } 
-    return id; 
+  function getClientId(){
+    let id = localStorage.getItem("table-client-id");
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      localStorage.setItem("table-client-id", id);
+    }
+    return id;
   }
   const CLIENT_ID = getClientId();
 
@@ -1201,13 +1201,13 @@
     saveWishlist(board); renderWishlist();
   }
 
-  function removeFromWishlist(trackId){ 
-    const board = loadWishlist(); 
-    delete board[trackId]; 
-    saveWishlist(board); 
-    localStorage.removeItem(`liked:${trackId}`); 
-    refreshLikeButtonState(); 
-    renderWishlist(); 
+  function removeFromWishlist(trackId){
+    const board = loadWishlist();
+    delete board[trackId];
+    saveWishlist(board);
+    localStorage.removeItem(`liked:${trackId}`);
+    refreshLikeButtonState();
+    renderWishlist();
   }
 
   function renderWishlist(){
@@ -1247,7 +1247,7 @@
     const key = likeStorageKey();
     const alreadyLiked = localStorage.getItem(key) === "1";
     const action = alreadyLiked ? "unlike" : "like";
-    
+
     if (alreadyLiked) { localStorage.removeItem(key); bumpWishlist(currentTrackMeta, -1); }
     else { localStorage.setItem(key, "1"); bumpWishlist(currentTrackMeta, +1); }
     refreshLikeButtonState();
@@ -1397,8 +1397,8 @@
     if (now - lastActivityAt >= IDLE_TIMEOUT_MS) showIdleCheck();
   }, 30000);
 
-  document.addEventListener("visibilitychange", () => { 
-    if (!document.hidden && video.paused) video.play().catch(() => {}); 
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && video.paused) video.play().catch(() => {});
   });
 
   // The live click-through link, back on the table now that timing is
@@ -1460,10 +1460,10 @@
   function renderEpgList(){
     const list = document.getElementById("epg-list"); if (!list) return; list.innerHTML = ""; list.scrollTop = 0;
     if (upcomingProgrammes.length === 0) { list.innerHTML = `<li class="top10-empty">Guide data not available yet.</li>`; return; }
-    upcomingProgrammes.forEach((entry, i) => { 
-      const li = document.createElement("li"); li.className = "top10-item"; 
-      li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div>`; 
-      list.appendChild(li); 
+    upcomingProgrammes.forEach((entry, i) => {
+      const li = document.createElement("li"); li.className = "top10-item";
+      li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div>`;
+      list.appendChild(li);
     });
   }
 
@@ -1514,12 +1514,12 @@
       const res = await fetch(`${SETTINGS?.api?.base || "/api"}/top?limit=${SETTINGS?.api?.topLimit || 10}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const ranked = await res.json(); list.innerHTML = "";
-      
+
       const items = ranked.slice(0, maxItems);
-      items.forEach((entry, i) => { 
-        const li = document.createElement("li"); li.className = "top10-item"; 
-        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${entry.count}</span>`; 
-        list.appendChild(li); 
+      items.forEach((entry, i) => {
+        const li = document.createElement("li"); li.className = "top10-item";
+        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${entry.count}</span>`;
+        list.appendChild(li);
       });
 
       for (let i = items.length; i < maxItems; i++) {
@@ -1527,8 +1527,8 @@
         li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><span class="top10-artist">${i === 0 ? "No community likes yet!" : "—"}</span></div>`;
         list.appendChild(li);
       }
-    } catch (e) { 
-      list.innerHTML = `<li class="top10-empty">Chart update pending</li>`; 
+    } catch (e) {
+      list.innerHTML = `<li class="top10-empty">Chart update pending</li>`;
     }
   }
 
@@ -1652,12 +1652,25 @@
     // watching. This checks ONLY for the real marker file's existence
     // (cheap, no page impact) and only escalates to a real, full
     // reload in the one specific case that actually needs it.
-    setInterval(async () => {
+    //
+    // Real, second purpose, added Aug 17: this same ping is also how the
+    // `viewers`/`viewerstotal` VPS functions count real distinct visitors
+    // (via the `cid` query param below) — see DEPLOYMENT_MANUAL.md
+    // Section 16. It used to ONLY fire inside the interval, meaning the
+    // first ping never went out until 3 minutes after page load — any
+    // real visit shorter than that (a quick look, a Reddit bounce) never
+    // logged anything at all, invisible to both counters. Fired once
+    // immediately here too, so every real visit is counted at least
+    // once, however short — the 3-minute interval below still handles
+    // the ongoing "still here" signal exactly as before.
+    const emergencyCheck = async () => {
       try {
         const res = await fetch(`/index_EmergON.html?_=${Date.now()}&cid=${CLIENT_ID}`, { cache: "no-store", method: "HEAD" });
         if (res.ok) window.location.reload();
       } catch (e) {}
-    }, 180000);
+    };
+    emergencyCheck();
+    setInterval(emergencyCheck, 180000);
     // Settings refresh too, same pattern — lets things like cacheOffsetSeconds
     // take effect live from the config app without needing a page reload.
     // ALSO checks for a remote "push channel to everyone" signal: if the
