@@ -3,24 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Table IPTV — Free 24/7 Independent Music Video Channel</title>
+<title>The Table IPTV</title>
 <meta name="description" content="A free, self-hosted, not-for-profit music video channel. No ads, no algorithm, no scrubbing. Every track links directly to the artist's store.">
-
-<!-- Open Graph (Facebook, Discord, Slack, LinkedIn, etc.) -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://tableip.tv/">
-<meta property="og:title" content="The Table IPTV — Free 24/7 Independent Music Video Channel">
-<meta property="og:description" content="A free, self-hosted, not-for-profit music video channel. No ads, no algorithm, no scrubbing. Every track links directly to the artist's store.">
-<meta property="og:image" content="https://tableip.tv/og-image.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-
-<!-- Twitter/X Card -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="The Table IPTV — Free 24/7 Independent Music Video Channel">
-<meta name="twitter:description" content="A free, self-hosted, not-for-profit music video channel. No ads, no algorithm, no scrubbing. Every track links directly to the artist's store.">
-<meta name="twitter:image" content="https://tableip.tv/og-image.jpg">
-
 <link rel="icon" type="image/png" href="https://tableiptv.b-cdn.net/favicon.png">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
 <style>
@@ -34,435 +18,234 @@
     --font-base: Arial, sans-serif;
     --font-mono: monospace;
     --font-serif: Georgia, 'Times New Roman', serif;
+    --player-border-color: #000;
+    --player-border-width: 3px;
+    --player-border-radius: 0px;
+    --player-shadow: none;
   }
 
   * { box-sizing: border-box; }
 
-  body {
+  html, body {
     margin: 0;
+    height: 100%;
+    height: 100dvh;
     background: var(--page-bg) url('wallpaper.jpg') center/cover no-repeat fixed;
-    transition: background-color 0.8s ease;
-    font-family: var(--font-base);
-    color: #1b1b1b;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 12px 40px;
-  }
-
-  .player-frame {
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    background: var(--frame-bg);
-    border: var(--player-border-width, 8px) solid var(--player-border-color, #000);
-    border-radius: var(--player-border-radius, 25px);
-    padding: 0 30px 0 clamp(64px, 17vw, 140px);
-    box-shadow: var(--player-shadow, 15px 15px rgba(0,0,0,.25));
-    transition: background-color 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease;
+    overflow: hidden;
   }
 
   .screen {
-    position: relative;
-    border: 6px solid black;
-    border-radius: 40px;
-    overflow: hidden;
-    aspect-ratio: 3 / 2;
-    background: #111;
-    box-sizing: border-box;
-  }
-  .session-uptime {
-    position: absolute;
-    bottom: 8px;
-    left: 12px;
-    font-family: var(--font-mono);
-    font-size: clamp(9px, 2vw, 12px);
-    color: rgba(255,255,255,.55);
-    text-shadow: 0 0 4px rgba(0,0,0,.8);
-    pointer-events: none;
-    z-index: 3;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-  }
-  .session-uptime.visible { opacity: 1; }
-  .screen:fullscreen,
-  :fullscreen .screen {
-    width: 100vw;
-    height: 100vh;
-    max-width: 100vw;
-    max-height: 100vh;
-    aspect-ratio: auto;
-    border-radius: 0;
-    border: none;
-    margin: 0;
-    padding: 0;
+    position: fixed;
+    inset: 0;
   }
 
   video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    border: var(--screen-border, none);
-    border-radius: var(--screen-radius, 0);
-    transition: border-color 0.8s ease;
+    width: 100vw; height: 100vh; height: 100dvh; object-fit: contain; display: block;
     cursor: pointer;
+    border: var(--player-border-width) solid var(--player-border-color);
+    border-radius: var(--player-border-radius);
+    box-shadow: var(--player-shadow);
+    transition: border-color 0.8s ease, box-shadow 0.8s ease;
   }
 
   .loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    background: black;
-    z-index: 20;
-    font-size: 20px;
-    text-align: center;
-    padding: 0 20px;
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    color: white; background: black; z-index: 20; font-size: 20px; text-align: center; padding: 0 20px;
+    transition: background-color .3s ease;
   }
   .error { color: #ff8080; }
+  .loading-spinner {
+    display: none; width: 40px; height: 40px; margin-bottom: 14px;
+    border: 4px solid rgba(255,255,255,.25); border-top-color: #fff;
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  .loading.switching { background: rgba(0,0,0,.45); }
+  .loading.switching .loading-spinner { display: block; }
+  .loading.error .loading-spinner { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .control-panel {
-    position: absolute;
-    left: clamp(6px, 2vw, 16px);
-    top: clamp(2px, 1.5vw, 20px);
-    bottom: clamp(2px, 1.5vw, 20px);
-    width: clamp(54px, 13.5vw, 100px);
+  .hamburger {
+    position: fixed; top: 16px; right: 16px; z-index: 30;
+    width: 46px; height: 46px; background: rgba(0,0,0,.55); border: none;
+    border-radius: 8px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 5px;
+  }
+  .hamburger span { display: block; width: 22px; height: 2px; background: #fff; }
+
+  .sound-toggle {
+    position: fixed; top: 16px; left: 16px; z-index: 30;
+    width: 46px; height: 46px; background: rgba(0,0,0,.55); border: none;
+    border-radius: 8px; cursor: pointer; color: #fff; font-size: 21px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .fullscreen-toggle {
+    position: fixed; left: 16px; z-index: 30;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: 46px; height: 46px; background: rgba(0,0,0,.55); border: none;
+    border-radius: 8px; cursor: pointer; color: #fff; font-size: 21px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .info-toggle {
+    position: fixed; right: 16px; z-index: 30;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: 46px; height: 46px; background: rgba(0,0,0,.55); border: none;
+    border-radius: 8px; cursor: pointer; color: #fff; font-size: 21px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Real, attention-drawing pulse on page load — nudges first-time
+     visitors to actually click the info button and see the update
+     notes, instead of it sitting there unnoticed. Runs a fixed number
+     of pulses then stops on its own (not an infinite loop) and also
+     stops immediately the moment someone actually clicks it. */
+  @keyframes info-flash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,.65); }
+    50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+  }
+  .info-toggle.flash { animation: info-flash 1.2s ease-out 4; }
+
+  .overlay-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 30;
     display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
     align-items: center;
-    text-align: center;
+    gap: clamp(8px, 2.5vw, 16px);
+    background: rgba(0,0,0,.55);
+    padding: 10px clamp(10px, 2.5vw, 18px);
+    border-radius: 14px;
+    backdrop-filter: blur(2px);
+    transition: background-color 0.8s ease;
   }
   .control-group { display: flex; flex-direction: column; align-items: center; }
-
-  /* Right-handed mode: flips the control panel back to the right side,
-     for anyone who prefers that instead of the default left-side layout. */
-  .right-handed .control-panel { left: auto; right: clamp(6px, 2vw, 16px); }
-  .right-handed .player-frame { padding: 0 clamp(64px, 17vw, 140px) 0 30px; }
   .dial-label {
-    font-size: clamp(6px, 1.7vw, 9px);
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: 0;
-    opacity: .8;
+    font-size: clamp(7px, 1.7vw, 9px); color: #fff; text-transform: uppercase;
+    letter-spacing: .05em; opacity: .8; margin-bottom: 4px;
   }
   .dial {
-    width: clamp(22px, 8.5vw, 46px);
-    height: clamp(22px, 8.5vw, 46px);
-    margin: clamp(1px, 1.2vw, 6px) auto 0;
+    width: clamp(29px, 7.9vw, 42px); height: clamp(29px, 7.9vw, 42px);
     background: var(--knob-color);
-    border: 5px solid #000;
-    border-radius: 50%;
-    cursor: pointer;
-    position: relative;
-    transition: .15s;
-    user-select: none;
-    touch-action: none;
+    border: 4px solid #000; border-radius: 50%; cursor: pointer; position: relative;
+    transition: .15s, background-color 0.8s ease; user-select: none; touch-action: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(14px, 3.7vw, 18px); color: #000; font-weight: bold;
   }
   .dial:hover { filter: brightness(1.1); }
   .dial:active { transform: scale(.94); }
-  .dial::before {
-    content: "";
-    position: absolute;
-    width: 6px;
-    height: 14px;
-    background: #000;
-    left: 50%;
-    top: 4px;
-    transform-origin: 50% 19px;
-    transform: translateX(-50%) rotate(var(--rot, 0deg));
-  }
-  #reload-dial::before { transform: translateX(-50%) rotate(0deg); }
-  #reload-dial:hover { filter: brightness(1.1); }
-  #reload-dial:active { transform: scale(.94) rotate(25deg); }
 
   .like-dial {
-    width: clamp(22px, 8.5vw, 46px);
-    height: clamp(22px, 8.5vw, 46px);
-    margin: clamp(1px, 1.2vw, 6px) auto 0;
+    width: clamp(29px, 7.9vw, 42px); height: clamp(29px, 7.9vw, 42px);
     background: #ffd54a;
-    border: 5px solid #000;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(13px, 4vw, 20px);
-    line-height: 1;
-    transition: .15s;
-    user-select: none;
+    border: 4px solid #000; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(15px, 4.2vw, 21px); line-height: 1; transition: .15s; user-select: none;
   }
   .like-dial:hover { filter: brightness(1.08); }
   .like-dial:active { transform: scale(.9); }
   .like-dial.liked { background: #ff9f1c; }
 
-  .menu-dial { position: relative; }
-  .menu-dial::before { content: none; }
-  .menu-dial span {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: clamp(12px, 4.5vw, 22px);
-    color: #000;
+  .chan-row { display: flex; gap: clamp(4px, 1.5vw, 8px); }
+  .chan-dial {
+    width: clamp(21px, 5.8vw, 29px); height: clamp(21px, 5.8vw, 29px);
+    background: #e0e0e0; border: 3px solid #000; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(12px, 3.2vw, 15px); font-weight: bold; color: #111; transition: .15s;
+  }
+  .chan-dial:hover { filter: brightness(1.08); }
+  .chan-dial:active { transform: scale(.9); }
+
+  @media (orientation: portrait) and (max-width: 900px) {
+    .overlay-controls {
+      bottom: max(56px, calc(env(safe-area-inset-bottom) + 48px));
+      gap: 12px;
+      padding: 10px 14px;
+    }
+    .dial-label { font-size: 9px; }
+    .dial, .like-dial { width: 44px; height: 44px; font-size: 18px; }
+    .chan-dial { width: 34px; height: 34px; font-size: 15px; }
+    .beta-tag {
+      bottom: max(10px, env(safe-area-inset-bottom));
+      font-size: 12px;
+      background: rgba(0,0,0,.5);
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
   }
 
+  @media (orientation: landscape) and (max-height: 500px) {
+    .overlay-controls {
+      left: 68px; right: auto; bottom: 16px; top: 16px;
+      transform: none;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px 7px;
+      gap: 10px;
+    }
+    body.right-handed .overlay-controls { left: auto; right: 68px; }
+    .dial-label { font-size: 7px; }
+    .dial, .like-dial { width: 34px; height: 34px; font-size: 14px; }
+    .chan-row { flex-direction: row; }
+    .chan-dial { width: 25px; height: 25px; font-size: 12px; }
+    .beta-tag { display: none; }
+  }
+
+  /* ---- Info Modal (ABOUT THE TABLE) ---- */
   .info-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.55);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    padding: 20px;
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none;
+    align-items: center; justify-content: center; z-index: 100; padding: 20px;
+    overflow-y: auto;
   }
   .info-modal-backdrop.open { display: flex; }
   .info-modal {
-    position: relative;
-    background: #fff;
-    border: 6px solid #000;
-    border-radius: 22px;
-    padding: 26px 30px;
-    max-width: 480px;
-    width: 100%;
-    box-shadow: 12px 12px rgba(0,0,0,.3);
+    position: relative; background: #fff; border: 6px solid #000; border-radius: 22px;
+    padding: 26px 30px; max-width: 480px; width: 100%; box-shadow: 12px 12px rgba(0,0,0,.3);
     animation: pop-in .16s ease-out;
+    max-height: 85dvh; max-height: 85vh;
+    display: flex; flex-direction: column;
+    margin: auto;
   }
-  @keyframes pop-in {
-    from { transform: scale(.85); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-  .info-modal h2 {
-    margin: 0 0 10px;
-    font-family: var(--font-mono);
-    letter-spacing: .03em;
-    color: var(--frame-bg);
-    transition: color 0.8s ease;
-  }
-  .info-modal p { line-height: 1.5; margin: 0 0 12px; color: #333; }
-  .next-event-banner {
-    background: var(--frame-bg);
-    color: #fff;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    font-size: 13px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    text-align: center;
-    transition: background-color 0.8s ease;
-  }
-  .menu-link-list { list-style: none; margin: 0; padding: 0; }
-  .menu-link-list li { border-bottom: 2px solid #eee; }
-  .menu-link-list li:last-child { border-bottom: none; }
-  .menu-link-list a {
-    display: block;
-    padding: 14px 4px;
-    color: #333;
-    text-decoration: none;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    font-size: 14px;
-  }
-  .menu-link-list a:hover { color: var(--frame-bg); }
-  .menu-separator {
-    border-bottom: none !important;
-    padding: 4px 0;
-  }
-  .menu-separator hr {
-    border: none;
-    border-top: 3px solid var(--frame-bg);
-    opacity: 0.3;
-    margin: 4px 0;
-  }
-  .menu-link-btn {
-    display: block;
-    width: 100%;
-    padding: 14px 4px;
-    background: none;
-    border: none;
-    text-align: left;
-    color: #333;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  .menu-link-btn:hover { color: var(--frame-bg); }
-  .info-modal p:last-child { margin-bottom: 0; }
-  .info-modal a { color: var(--frame-bg); }
+  .modal-scroll-body { overflow-y: auto; min-height: 0; }
+  @keyframes pop-in { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .info-modal h2 { margin: 0 0 10px; font-family: var(--font-mono); letter-spacing: .03em; color: var(--frame-bg); transition: color 0.8s ease; }
   .info-close {
-    position: absolute;
-    top: -14px;
-    right: -14px;
-    width: 32px;
-    height: 32px;
-    background: #ffd54a;
-    border: 4px solid #000;
-    border-radius: 50%;
-    font-size: 18px;
-    line-height: 1;
-    font-weight: bold;
-    cursor: pointer;
+    position: absolute; top: -14px; right: -14px; width: 32px; height: 32px;
+    background: #ffd54a; border: 4px solid #000; border-radius: 50%; font-size: 18px;
+    line-height: 1; font-weight: bold; cursor: pointer;
   }
   .info-close:hover { filter: brightness(1.08); }
 
-  .prompt-btn {
-    font-family: var(--font-mono);
-    font-weight: bold;
-    font-size: 14px;
-    padding: 10px 24px;
-    background: var(--knob-color);
-    border: 3px solid #000;
-    border-radius: 8px;
-    cursor: pointer;
-    color: #111;
+  .menu-link-list { list-style: none; margin: 0; padding: 0; }
+  .menu-link-list li { border-bottom: 2px solid #eee; }
+  .menu-link-list li:last-child { border-bottom: none; }
+  .menu-link-list a, .menu-link-btn {
+    display: block; padding: 14px 4px; color: #333; text-decoration: none;
+    font-family: var(--font-mono); font-weight: bold; font-size: 14px;
+    background: none; border: none; text-align: left; width: 100%; cursor: pointer;
   }
-  .prompt-btn:hover { filter: brightness(1.1); }
-  .prompt-btn-no { background: #eee; }
+  .menu-link-list a:hover, .menu-link-btn:hover { color: var(--frame-bg); }
+  .menu-separator { border-bottom: none !important; padding: 4px 0; }
+  .menu-separator hr { border: none; border-top: 3px solid var(--frame-bg); opacity: 0.3; margin: 4px 0; }
 
-  .info-modal::before, .info-modal::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-left: 18px solid transparent;
-    border-right: 18px solid transparent;
-    transform: translateX(-50%);
-  }
-  .info-modal::before { bottom: -24px; border-top: 24px solid #000; }
-  .info-modal::after { bottom: -17px; border-top: 18px solid #fff; }
-
-  /* ----- MOBILE LAYOUT (default) ----- */
-  .page-grid {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    gap: 16px;
-  }
-
-  .main-col {
-    order: -1;
-    width: 100%;
-  }
-
-  .side-panel-group,
-  .right-panel-group {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: min(90vw, 800px);
-  }
-
-  .side-panel {
-    width: 100%;
-    background: #fff;
-    border: 6px solid #000;
-    border-radius: 18px;
-    box-shadow: 10px 10px rgba(0,0,0,.15);
-    overflow: hidden;
-    transition: max-height 0.25s ease;
-  }
-
-  .side-panel-group .side-panel,
-  .right-panel-group .side-panel {
-    margin-top: 0;
-  }
-
-  /* Collapsible state */
-  .side-panel.collapsed .top10-list,
-  .side-panel.collapsed .under-table-content {
-    display: none !important;
-  }
-
-  /* Under the Table content styling */
-  .under-table-content {
-    padding: 16px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    color: #333;
-    line-height: 1.8;
-  }
-  .under-table-content p {
-    margin: 0 0 8px 0;
-  }
-  .under-table-content .ut-title {
-    font-weight: bold;
-    font-size: 16px;
-    color: var(--frame-bg);
-  }
-
-  .top10-header {
-    background: var(--frame-bg);
-    color: #fff;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    letter-spacing: .05em;
-    padding: 10px 14px;
-    border-bottom: 4px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.8s ease;
-  }
-  .top10-header:hover {
-    filter: brightness(1.08);
-  }
-  .side-panel.collapsed .top10-header {
-    border-bottom: none;
-  }
-  .top10-header-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .collapse-icon {
-    font-family: var(--font-mono);
-    font-size: 16px;
-    font-weight: bold;
-    line-height: 1;
-    padding: 0 4px;
-  }
-
-  .top10-star { color: #ffd54a; }
-  .top10-list { list-style: none; margin: 0; padding: 8px; counter-reset: none; max-height: 230px; overflow-y: auto; }
-  #epg-list { display: flex; flex-direction: column; }
-  .top10-list::-webkit-scrollbar { width: 8px; }
-  .top10-list::-webkit-scrollbar-thumb { background: var(--knob-color); border-radius: 4px; border: 2px solid #fff; }
-  .top10-list::-webkit-scrollbar-track { background: #f0f0f0; }
+  .top10-list { list-style: none; margin: 0; padding: 8px; max-height: 320px; overflow-y: auto; }
   .top10-item { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed #ccc; min-height: 42px; }
   .top10-item:last-child { border-bottom: none; }
-  .top10-item.empty-slot { opacity: 0.45; }
-  .top10-item.empty-slot .rank-badge { background: #e0e0e0 !important; border-color: #888; }
-  .top10-item.empty-slot .top10-artist { font-style: italic; color: #777; }
+  
+  .top10-item:nth-child(even) { background-color: rgba(0, 0, 0, 0.03); }
 
   .rank-badge {
-    flex: 0 0 auto;
-    width: 24px; height: 24px;
-    border-radius: 50%;
+    flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+    border: 3px solid #000; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: bold; font-size: 11px; color: #111;
     background: var(--knob-color);
-    border: 3px solid #000;
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-mono);
-    font-weight: bold;
-    font-size: 11px;
-    color: #111;
     transition: background-color 0.8s ease;
   }
-  .top10-item:nth-child(odd) .rank-badge { background: #ffd54a; }
+
+  .top10-item:nth-child(odd) .rank-badge { background: var(--highlight); }
+
   .recent-badge { background: #d8dee2 !important; color: #555; font-size: 14px; }
   .top10-meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; padding-right: 6px; }
   .top10-meta a { color: var(--frame-bg); font-family: var(--font-mono); font-size: 13px; text-decoration: none; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -477,178 +260,135 @@
   }
   .wishlist-remove:hover { background: #ffdede; }
 
-  /* ----- FOOTER ----- */
-  .site-footer {
-    width: 100%;
-    max-width: min(90vw, 1200px);
-    margin-top: 32px;
-    padding: 18px 20px;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: #fff;
-    line-height: 1.6;
-  }
-  .site-footer p { margin: 2px 0; }
-  .site-footer-copy { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 6px !important; }
-  .site-footer a { color: var(--knob-color); font-weight: bold; text-decoration: underline; transition: color 0.8s ease; }
-  .site-footer a:hover { filter: brightness(1.15); }
-
-  @media (max-height: 500px) and (orientation: landscape) {
-    .player-frame { transform: scale(.8); transform-origin: center center; width: min(95vw, 800px); margin-bottom: 10px; }
+  .guide-now-label {
+    font-family: var(--font-mono); font-weight: bold; font-size: 11px; letter-spacing: .05em;
+    color: #888; text-transform: uppercase; padding: 10px 6px 4px;
   }
 
-  /* ----- DESKTOP LAYOUT (wide screens) ----- */
-  @media (min-width: 1200px) {
-    .page-grid {
-      display: grid;
-      grid-template-columns: 280px 1fr 280px;
-      gap: 28px;
-      max-width: 100%;
-      margin: 0 auto;
-      align-items: start;
-      padding: 0 40px;
-    }
-    .side-panel-group {
-      grid-column: 1;
-      margin-top: 30px;
-      width: 100%;
-    }
-    .main-col {
-      grid-column: 2;
-      width: auto;
-      order: 0;
-    }
-    .right-panel-group {
-      grid-column: 3;
-      margin-top: 30px;
-      width: 100%;
-    }
-    .side-panel {
-      width: 100%;
-      margin-top: 0;
-    }
+  .prompt-btn {
+    font-family: var(--font-mono); font-weight: bold; font-size: 14px;
+    padding: 10px 24px; background: var(--knob-color); border: 3px solid #000;
+    border-radius: 8px; cursor: pointer; color: #111; transition: background-color 0.8s ease;
   }
+  .prompt-btn:hover { filter: brightness(1.1); }
+  .prompt-btn-no { background: #eee; }
 
-  @media (max-width: 800px) and (orientation: portrait) {
-    .player-frame { margin-bottom: 0px; }
+  .beta-tag {
+    position: fixed; bottom: 4px; left: 50%; transform: translateX(-50%);
+    font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,.55);
+    letter-spacing: .05em; z-index: 5; pointer-events: none;
   }
-  @media (max-width: 1000px) and (orientation: landscape) {
-    .player-frame { width: min(95vw, 800px); padding: 0 clamp(12px, 5vw, 20px) 0 clamp(54px, 14vw, 100px); }
-    .control-panel { left: clamp(2px, 1vw, 8px); width: clamp(50px, 12vw, 90px); }
-    .right-handed .player-frame { padding: 0 clamp(54px, 14vw, 100px) 0 clamp(12px, 5vw, 20px); }
-    .right-handed .control-panel { left: auto; right: clamp(2px, 1vw, 8px); }
+  .beta-tag a { color: var(--knob-color); pointer-events: auto; }
+
+  .rotate-nudge {
+    display: none;
+  }
+  @media (orientation: portrait) and (max-width: 900px) and (pointer: coarse) {
+    .rotate-nudge {
+      display: flex; align-items: center; gap: 10px;
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 25; max-width: calc(100vw - 120px);
+      background: rgba(0,0,0,.65); color: #fff; font-size: 15px;
+      padding: 12px 16px; border-radius: 24px; cursor: pointer;
+    }
+    .rotate-nudge.dismissed { display: none; }
+    .rotate-nudge-icon {
+      display: inline-block; font-size: 20px;
+      animation: rotate-hint 1.6s ease-in-out infinite;
+    }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-90deg); }
+    }
+    .rotate-nudge-close {
+      background: none; border: none; color: rgba(255,255,255,.75);
+      font-size: 20px; line-height: 1; cursor: pointer; padding: 0 0 0 4px;
+    }
   }
 </style>
 </head>
 <body>
 
-<div class="page-grid">
-
-  <!-- LEFT COLUMN -->
-  <div class="side-panel-group">
-    <aside class="side-panel collapsed" id="recent-panel">
-      <div class="top10-header" onclick="togglePanelCollapse('recent-panel')">
-        <div class="top10-header-title"><span class="top10-star">♫</span> RECENTLY PLAYED</div>
-        <span class="collapse-icon" id="recent-panel-icon">+</span>
-      </div>
-      <ol class="top10-list" id="recent-list"><li class="top10-empty">Nothing played yet<br>this session.</li></ol>
-    </aside>
-    <script>if (window.innerWidth >= 1200) { document.getElementById("recent-panel").classList.remove("collapsed"); document.getElementById("recent-panel-icon").textContent = "−"; }</script>
-
-    <aside class="side-panel collapsed" id="community-panel">
-      <div class="top10-header" onclick="togglePanelCollapse('community-panel')">
-        <div class="top10-header-title"><span class="top10-star">🌐</span> NEXT MONTH'S TOP 10</div>
-        <span class="collapse-icon" id="community-panel-icon">+</span>
-      </div>
-      <ol class="top10-list" id="top10-inline-list"><li class="top10-empty">Loading...</li></ol>
-    </aside>
-    <script>if (window.innerWidth >= 1200) { document.getElementById("community-panel").classList.remove("collapsed"); document.getElementById("community-panel-icon").textContent = "−"; }</script>
+<div class="screen">
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div id="loading-text">Setting the TABLE...</div>
   </div>
+  <video id="tv" autoplay muted playsinline></video>
+</div>
 
-  <!-- CENTER COLUMN -->
-  <div class="main-col">
-    <div class="player-frame">
-      <div class="screen">
-        <div id="loading" class="loading">Setting the TABLE...</div>
-        <video id="tv" autoplay muted playsinline></video>
-        <div id="session-uptime" class="session-uptime">00:00:00</div>
-      </div>
-      <div class="control-panel">
-        <div class="control-group"><div class="dial-label">Guide</div><div class="dial" id="reload-dial" onclick="handlePlayDialClick()" title="Show upcoming songs"></div></div>
-        <div class="control-group"><div class="dial-label">Like</div><div class="like-dial" id="like-btn" onclick="toggleLike()" title="Like this track">★</div></div>
-        <div class="control-group"><div class="dial-label">Menu</div><div class="dial menu-dial" id="menu-dial" onclick="toggleMenuModal(true)" title="More links"><span>&equiv;</span></div></div>
-      </div>
+<button class="hamburger" onclick="toggleMenuModal(true)" aria-label="Menu">
+  <span></span><span></span><span></span>
+</button>
+
+<button class="sound-toggle" id="sound-btn" onclick="toggleSound()" aria-label="Toggle sound">🔇</button>
+<button class="fullscreen-toggle" id="fullscreen-btn" onclick="toggleFullscreen()" aria-label="Toggle fullscreen">⛶</button>
+<button class="info-toggle flash" id="info-btn" onclick="toggleFooterModal(true); this.classList.remove('flash');" aria-label="Info">ℹ</button>
+
+<div class="overlay-controls">
+  <div class="control-group"><div class="dial-label">Guide</div><div class="dial" id="guide-dial" onclick="openGuide()" title="Up next + recently played">☰</div></div>
+  <div class="control-group"><div class="dial-label">Like</div><div class="like-dial" id="like-btn" onclick="toggleLike()" title="Like this track">★</div></div>
+  <div class="control-group">
+    <div class="dial-label">Channel</div>
+    <div class="chan-row">
+      <div class="chan-dial" id="chan-down" onclick="switchChannel(-1)" title="Previous channel">−</div>
+      <div class="chan-dial" id="chan-up" onclick="switchChannel(1)" title="Next channel">+</div>
     </div>
-
-    <!-- Moved inside main-col so its position is anchored to the player's
-         height specifically, not to whichever side panel happens to be
-         tallest — that was pushing it off-screen as columns grew. -->
-    <footer class="site-footer" id="main-footer">
-      <p class="site-footer-copy" id="site-footer-copy">2026 The Table IPTV • No Ads. No Algorithm. Go Get Enshittified Elsewhere 🖕</p>
-    </footer>
   </div>
-
-  <!-- RIGHT COLUMN -->
-  <div class="right-panel-group">
-    <aside class="side-panel collapsed" id="wishlist-panel">
-      <div class="top10-header" onclick="togglePanelCollapse('wishlist-panel')">
-        <div class="top10-header-title"><span class="top10-star">★</span> YOUR LIKES</div>
-        <span class="collapse-icon" id="wishlist-panel-icon">+</span>
-      </div>
-      <ol class="top10-list" id="wishlist-list"><li class="top10-empty">No likes yet —<br>Pick your first!</li></ol>
-    </aside>
-    <script>if (window.innerWidth >= 1200) { document.getElementById("wishlist-panel").classList.remove("collapsed"); document.getElementById("wishlist-panel-icon").textContent = "−"; }</script>
-
-    <aside class="side-panel" id="under-table-panel">
-      <div class="top10-header" onclick="togglePanelCollapse('under-table-panel')">
-        <div class="top10-header-title"><span class="top10-star">🍻</span> UNDER THE TABLE</div>
-        <span class="collapse-icon" id="under-table-panel-icon">−</span>
-      </div>
-      <div class="under-table-content" id="under-table-content">
-        <p class="ut-title" id="ut-title">Loading...</p>
-        <p id="ut-text"></p>
-        <p id="ut-bugs"></p>
-        <p id="ut-launch"></p>
-      </div>
-    </aside>
-  </div>
-
+  <div class="control-group"><div class="dial-label">Top 10</div><div class="dial" id="top10-dial" onclick="openTop10()" title="Community Top 10">🔥</div></div>
+  <div class="control-group"><div class="dial-label">Favs</div><div class="dial" id="wishlist-dial" onclick="openWishlist()" title="Your favs">♥</div></div>
 </div>
 
-<div class="info-modal-backdrop" id="epg-backdrop" onclick="toggleEpgModal(false)">
+<!-- Guide modal -->
+<div class="info-modal-backdrop" id="guide-backdrop" onclick="toggleGuideModal(false)">
   <div class="info-modal" onclick="event.stopPropagation()">
-    <button class="info-close" onclick="toggleEpgModal(false)" aria-label="Close">×</button>
-    <div id="next-event-banner" class="next-event-banner" style="display:none;"></div>
-    <ol class="top10-list" id="epg-list" style="max-height:320px; min-height:320px; overflow-anchor:none;"></ol>
-  </div>
-</div>
-
-<div class="info-modal-backdrop" id="info-backdrop" onclick="toggleInfoModal(false)">
-  <div class="info-modal" onclick="event.stopPropagation()">
-    <button class="info-close" onclick="toggleInfoModal(false)" aria-label="Close">×</button>
-    <h2 id="about-title"></h2>
-    <div id="about-content"></div>
-  </div>
-</div>
-
-<div class="info-modal-backdrop" id="welcome-backdrop">
-  <div class="info-modal" onclick="event.stopPropagation()">
-    <h2>The Table</h2>
-    <p id="welcome-prompt-text">Ready to tune in?</p>
-    <div style="display:flex; gap:12px; margin-top:16px;">
-      <button class="prompt-btn" onclick="handleWelcomeResponse(true)">Yes</button>
-      <button class="prompt-btn prompt-btn-no" onclick="handleWelcomeResponse(false)">No</button>
+    <button class="info-close" onclick="toggleGuideModal(false)" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
+      <h2>Guide</h2>
+      <ol class="top10-list" id="guide-list" style="max-height:none;"><li class="top10-empty">Loading...</li></ol>
     </div>
   </div>
 </div>
 
-<div class="info-modal-backdrop" id="idle-check-backdrop">
+<!-- Top 10 modal -->
+<div class="info-modal-backdrop" id="top10-backdrop" onclick="toggleTop10Modal(false)">
   <div class="info-modal" onclick="event.stopPropagation()">
-    <h2>Still there?</h2>
-    <p>The channel's been quiet a while — tap below to keep watching.</p>
-    <div style="margin-top:16px;">
-      <button class="prompt-btn" onclick="handleIdleCheckResponse()">Yes, I'm here</button>
+    <button class="info-close" onclick="toggleTop10Modal(false)" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
+      <h2>🔥 Top 10</h2>
+      <ol class="top10-list" id="top10-list" style="max-height:none;"><li class="top10-empty">Loading...</li></ol>
+    </div>
+  </div>
+</div>
+
+<!-- Favs modal -->
+<div class="info-modal-backdrop" id="wishlist-backdrop" onclick="toggleWishlistModal(false)">
+  <div class="info-modal" onclick="event.stopPropagation()">
+    <button class="info-close" onclick="toggleWishlistModal(false)" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
+      <h2>★ Favs</h2>
+      <ol class="top10-list" id="wishlist-list" style="max-height:none;"><li class="top10-empty">No favs yet — pick your first!</li></ol>
+    </div>
+  </div>
+</div>
+
+<!-- Info Modal (ABOUT THE TABLE) -->
+<div class="info-modal-backdrop" id="info-backdrop" onclick="toggleInfoModal()">
+  <div class="info-modal" onclick="event.stopPropagation()">
+    <button class="info-close" onclick="toggleInfoModal()" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
+      <h2 id="info-title">ABOUT THE TABLE</h2>
+      <div id="info-text" style="font-family:var(--font-mono);font-size:14px;color:#333;line-height:1.8;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="info-modal-backdrop" id="footer-backdrop" onclick="toggleFooterModal(false)">
+  <div class="info-modal" onclick="event.stopPropagation()">
+    <button class="info-close" onclick="toggleFooterModal(false)" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
+      <h2 id="footer-title">UNDER THE TABLE</h2>
+      <div id="footer-text" style="font-family:var(--font-mono);font-size:14px;color:#333;line-height:1.8;"></div>
     </div>
   </div>
 </div>
@@ -656,131 +396,120 @@
 <div class="info-modal-backdrop" id="menu-backdrop" onclick="toggleMenuModal(false)">
   <div class="info-modal" onclick="event.stopPropagation()">
     <button class="info-close" onclick="toggleMenuModal(false)" aria-label="Close">×</button>
+    <div class="modal-scroll-body">
     <h2>Menu</h2>
     <ul class="menu-link-list">
-      <li><a href="/study.html">🎧 LOFI / Study Channel</a></li>
-      <li class="menu-separator"><hr></li>
       <li><button class="menu-link-btn" onclick="toggleHandedness()">Swap Controls Left / Right</button></li>
       <li class="menu-separator"><hr></li>
-      <li><button class="menu-link-btn" onclick="toggleMenuModal(false); toggleInfoModal(true);">About The Table</button></li>
-      <li><a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></li>
-      <li><a href="/financials.html" target="_blank" rel="noopener">Financials & Mission Objective</a></li>
+      <li><button class="menu-link-btn" onclick="toggleMenuModal(false); toggleInfoModal();">About The Table</button></li>
       <li><a href="/artists.html" target="_blank" rel="noopener">For Artists</a></li>
+      <li><a href="/financials.html" target="_blank" rel="noopener">Financials & Mission Objective</a></li>
+      <li><a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a></li>
       <li><a href="/dmca.html" target="_blank" rel="noopener">Content Removal / DMCA Policy</a></li>
       <li class="menu-separator"><hr></li>
       <li><a href="https://buymeacoffee.com/tableiptv" target="_blank" rel="noopener">🍕 Help hold up The Table</a></li>
       <li><a href="mailto:tableiptv@gmail.com">Email tableiptv@gmail.com</a></li>
     </ul>
+    </div>
   </div>
 </div>
 
+<div class="info-modal-backdrop" id="welcome-backdrop">
+  <div class="info-modal" onclick="event.stopPropagation()">
+    <h2>The Table</h2>
+    <p id="welcome-prompt-text">Ready to tune in?</p>
+    <p style="font-size:12px; color:#888; margin-top:-6px;"></p>
+    <div style="display:flex; gap:12px; margin-top:16px;">
+      <button class="prompt-btn" onclick="handleWelcomeResponse(true)">Yes</button>
+      <button class="prompt-btn prompt-btn-no" onclick="handleWelcomeResponse(false)">No</button>
+    </div>
+  </div>
+</div>
+
+<div class="beta-tag"><span id="site-footer-copy">Loading...</span> — <a href="/indexORIG.html">classic site</a></div>
+
+<!-- Rotate nudge -->
+<div class="rotate-nudge" id="rotate-nudge" onclick="dismissRotateNudge()">
+  <span class="rotate-nudge-icon">⤵</span>
+  <span>Rotate your device for the full picture</span>
+  <button class="rotate-nudge-close" aria-label="Dismiss">×</button>
+</div>
+
 <script>
-  // Resolved after loadSettings() in bootChannel() — these defaults are the
-  // safe fallback if settings.json is ever unreachable, matching the exact
-  // values that were hardcoded before this was externalized.
-  let CHANNEL_NUMBER = "2";
+  // ============= CONFIG =============
+  let CHANNEL_NUMBER = "4";
   let STREAM_BASE_URL = "https://tableiptv.b-cdn.net/iptv/channel";
   let STREAM = "";
   let XMLTV_URL = "iptv/xmltv.xml";
   let CHANNEL_ID_PREFIX = "";
+  let SETTINGS = null;
+  let lastKnownReloadSignal = 0; // remote "push channel to everyone" mechanism — see the periodic check in bootChannel()
+  const CHANNEL_LIST = ["2", "4", "67"];
 
-  function resolveStreamConfig(){
-    CHANNEL_NUMBER = SETTINGS?.video?.channelNumber || "2";
-    STREAM_BASE_URL = SETTINGS?.video?.streamBaseUrl || "https://tableiptv.b-cdn.net/iptv/channel";
-    STREAM = `${STREAM_BASE_URL}/${CHANNEL_NUMBER}.m3u8?mode=segmenter&_=${Date.now()}`;
-    XMLTV_URL = SETTINGS?.epg?.url || "iptv/xmltv.xml";
-    CHANNEL_ID_PREFIX = `C${CHANNEL_NUMBER}.`;
-    if (SETTINGS?.video?.idleTimeoutMinutes) IDLE_TIMEOUT_MS = SETTINGS.video.idleTimeoutMinutes * 60 * 1000;
-  }
-
+  // ============= DOM REFS =============
   const video = document.getElementById("tv");
   const loading = document.getElementById("loading");
   const likeBtn = document.getElementById("like-btn");
 
-  const utTitle = document.getElementById("ut-title");
-  const utText = document.getElementById("ut-text");
-  const utBugs = document.getElementById("ut-bugs");
-  const utLaunch = document.getElementById("ut-launch");
-
+  // ============= STATE =============
   let hlsInstance = null;
-  let sessionStartAt = Date.now();
   let currentTrackId = null;
-  let currentTrackTimestamp = null; // the real timestamp that identified currentTrackId — used by Guide for unambiguous positioning, since matching by song name breaks on repeats
+  let currentTrackTimestamp = null;
   let currentTrackMeta = null;
-  let upcomingProgrammes = [];
   let artistLinkOverrides = {};
-  let SETTINGS = null;
-  let lastKnownReloadSignal = 0; // remote "push channel to everyone" mechanism —
-                                  // see the periodic check further down
   let recentlyPlayed = [];
-  let xmltvProgrammes = []; // cached {start, stop, title} — fetched lazily, not polled
+  let xmltvProgrammes = [];
+  let upcomingProgrammes = [];
 
-  function getBrowserType() {
+  // ============= SETTINGS =============
+  function resolveStreamConfig(){
+    STREAM_BASE_URL = SETTINGS?.video?.streamBaseUrl || "https://tableiptv.b-cdn.net/iptv/channel";
+    STREAM = `${STREAM_BASE_URL}/${CHANNEL_NUMBER}.m3u8?mode=segmenter&_=${Date.now()}`;
+    XMLTV_URL = SETTINGS?.epg?.url || "iptv/xmltv.xml";
+    CHANNEL_ID_PREFIX = `C${CHANNEL_NUMBER}.`;
+  }
+
+  async function loadSettings(){
+    try {
+      const res = await fetch('settings.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      SETTINGS = await res.json();
+    } catch (e) {
+      SETTINGS = {
+        video: { channelNumber: "4", streamBaseUrl: "https://tableiptv.b-cdn.net/iptv/channel", maxRecent: 5 },
+        api: { base: '/api', topLimit: 10 },
+        epg: { url: "iptv/xmltv.xml", acronyms: ["mf","doom","czarface","prof","madvillain","dj","mc","xl","tv","uk","us"] }
+      };
+    }
+    CHANNEL_NUMBER = SETTINGS?.video?.channelNumber || "4";
+  }
+
+  // ============= LOADING UI =============
+  function hideLoading(){ loading.style.display = "none"; loading.classList.remove("switching"); }
+  function showError(msg){
+    loading.style.display = "flex";
+    loading.classList.remove("switching");
+    loading.classList.add("error");
+    const t = document.getElementById("loading-text");
+    if (t) t.innerHTML = msg; else loading.innerHTML = msg;
+  }
+
+  // ============= BROWSER DETECTION =============
+  function getBrowserType(){
     const ua = navigator.userAgent.toLowerCase();
     if (ua.includes('firefox')) return 'firefox';
     if (ua.includes('safari') && !ua.includes('chrome')) return 'safari';
     return 'chrome';
   }
 
-  async function loadSettings() {
-    try {
-      const res = await fetch('settings.json', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      SETTINGS = await res.json();
-      return SETTINGS;
-    } catch (e) {
-      SETTINGS = {
-        video: { cacheOffsetSeconds: 55, maxRecent: 5, channelNumber: "2", streamBaseUrl: "https://tableiptv.b-cdn.net/iptv/channel" },
-        ui: { wishlistMax: 10, communityTopMax: 10, recentlyPlayedMax: 5 },
-        api: { base: '/api', topLimit: 10, refreshIntervalMs: 120000 },
-        epg: { url: "iptv/xmltv.xml", acronyms: ["mf", "doom", "czarface", "prof", "madvillain", "dj", "mc", "xl", "tv", "uk", "us"] }
-      };
-      return SETTINGS;
-    }
-  }
-
-  function hideLoading(){ loading.style.display = "none"; }
-  function showError(msg){ loading.style.display = "flex"; loading.classList.add("error"); loading.innerHTML = msg; }
-
-  // HLS Player Setup
-  //
-  // Watchdog philosophy, after everything learned tonight: the earlier
-  // watchdog broke real user-pause because video.paused looks identical
-  // whether a person clicked pause or Chrome's decoder silently died —
-  // there's no way to tell those apart from the outside. So this version
-  // deliberately does NOT touch any paused state at all, ever. It only
-  // acts on the one case that's completely unambiguous: video.paused is
-  // FALSE (it thinks it's playing) but currentTime has stopped advancing.
-  // That can never be a legitimate user action, so it's always safe to
-  // auto-recover. A long-stuck genuine pause is handled separately by the
-  // "still listening?" idle timer, not by this.
-  let lastPlaybackTime = -1;
-  let frozenCycles = 0;
+  // ============= HLS PLAYER =============
   let consecutiveFatalErrors = 0;
-  const FREEZE_CHECK_MS = 6000;
-  const FREEZE_CYCLES_BEFORE_RELOAD = 2; // ~12s of confirmed non-paused freeze
-  const MAX_CONSECUTIVE_FATAL_ERRORS = 5; // then stop the tight retry loop
-  const OFFLINE_RETRY_BASE_MS = 30000; // then keep trying, just slower — never require a manual F5
-  const OFFLINE_RETRY_MAX_MS = 300000; // cap backoff at 5 min so it never gives up permanently
+  const MAX_CONSECUTIVE_FATAL_ERRORS = 5;
+  const OFFLINE_RETRY_BASE_MS = 30000;
+  const OFFLINE_RETRY_MAX_MS = 300000;
   let offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
 
   function loadPlayer(){
-    // Resets on every call — fresh boot, freeze-recovery, network-error
-    // backoff retry, idle-timer resume. That's intentional: this is a real,
-    // direct visual signal a recovery just happened, not just "how long
-    // has the tab been open."
-    sessionStartAt = Date.now();
-    lastLoadPlayerAt = Date.now(); // gates the grace period in handleRealPlaybackTime
-
-    // Prefer hls.js whenever it's actually available and supported. This
-    // used to check native support FIRST, which was a real bug: canPlayType
-    // can return "maybe" (not just "" or "probably") per spec — and
-    // `if (video.canPlayType(...))` treats ANY non-empty string as truthy,
-    // including "maybe". Confirmed via testing: Chrome was returning
-    // "maybe" for HLS, meaning it silently took the "native" branch this
-    // whole time despite having no real ability to decode raw .m3u8 —
-    // hls.js was never actually instantiated, which is why FRAG_CHANGED
-    // could never fire. Native playback is now only a last-resort fallback.
     const hlsJsAvailable = typeof Hls !== "undefined" && Hls.isSupported();
 
     if (!hlsJsAvailable) {
@@ -788,24 +517,16 @@
         video.src = STREAM;
         video.addEventListener("loadeddata", hideLoading, { once: true });
         video.play().catch(() => {});
-        startNativeTrackPolling(); // no hls.js on this path, no FRAG_CHANGED — poll getStartDate() instead
         return;
       }
       showError("Browser does not support HLS.");
       return;
     }
 
-    if (hlsInstance) {
-      hlsInstance.destroy();
-      hlsInstance = null;
-    }
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 
     const browser = getBrowserType();
-    const hlsConfig = SETTINGS?.hls?.[browser] || SETTINGS?.hls?.chrome || {
-      lowLatencyMode: false,
-      enableWorker: true,
-      backBufferLength: 30
-    };
+    const hlsConfig = SETTINGS?.hls?.[browser] || SETTINGS?.hls?.chrome || { lowLatencyMode: false, enableWorker: true, backBufferLength: 30 };
 
     hlsInstance = new Hls(hlsConfig);
     hlsInstance.attachMedia(video);
@@ -814,12 +535,10 @@
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
       hideLoading();
       video.play().catch(() => {});
-      consecutiveFatalErrors = 0; // a successful parse means we're genuinely back
-      offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS; // reset backoff too
+      consecutiveFatalErrors = 0;
+      offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
     });
 
-    // Real-time track detection — tied to the actual fragment this browser
-    // is decoding right now, not a guessed wall-clock offset.
     hlsInstance.on(Hls.Events.FRAG_CHANGED, (event, data) => {
       const pdt = data?.frag?.programDateTime;
       if (pdt != null) handleRealPlaybackTime(pdt);
@@ -827,73 +546,44 @@
 
     hlsInstance.on(Hls.Events.ERROR, (event, data) => {
       if (!data.fatal) return;
-
       switch (data.type) {
         case Hls.ErrorTypes.MEDIA_ERROR:
-          console.warn("Media error detected, recovering...");
           hlsInstance.recoverMediaError();
           break;
         case Hls.ErrorTypes.NETWORK_ERROR:
           consecutiveFatalErrors++;
           if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
-            // Stop the TIGHT retry loop — a real source outage shouldn't
-            // hammer the server every few seconds forever. But this must
-            // not require a manual F5 either (confirmed via real testing:
-            // it did, and that's a real gap). Show offline honestly, then
-            // keep trying automatically on a slower, growing backoff.
-            console.error(`Repeated fatal network errors — stream offline. Retrying in ${offlineRetryDelayMs / 1000}s.`);
-            hlsInstance.destroy();
-            hlsInstance = null;
-            video.removeAttribute("src");
-            video.load();
-            showError("Stream Offline — the channel isn't broadcasting right now. Retrying automatically...");
-
-            setTimeout(() => {
-              consecutiveFatalErrors = 0;
-              loadPlayer();
-            }, offlineRetryDelayMs);
-
+            hlsInstance.destroy(); hlsInstance = null;
+            video.removeAttribute("src"); video.load();
+            showError("Stream Offline — retrying automatically...");
+            setTimeout(() => { consecutiveFatalErrors = 0; loadPlayer(); }, offlineRetryDelayMs);
             offlineRetryDelayMs = Math.min(offlineRetryDelayMs * 2, OFFLINE_RETRY_MAX_MS);
             return;
           }
-          console.warn(`Network error detected (${consecutiveFatalErrors}/${MAX_CONSECUTIVE_FATAL_ERRORS}), re-fetching...`);
           hlsInstance.startLoad();
           break;
         default:
-          console.error("Unrecoverable error encountered. Re-initializing player...");
           loadPlayer();
           break;
       }
     });
   }
 
-  // Native Safari HLS has no hls.js, so no FRAG_CHANGED event — but the
-  // browser itself still exposes the real broadcast start time via the
-  // standard getStartDate() API (tied to the same embedded program date
-  // time). Combined with currentTime, this gives the same real playback
-  // timestamp without needing to poll XMLTV on a timer.
-  let nativePollInterval = null;
-  function startNativeTrackPolling(){
-    if (nativePollInterval) return;
-    nativePollInterval = setInterval(() => {
-      try {
-        const startDate = video.getStartDate?.();
-        if (!startDate || isNaN(startDate.getTime())) return;
-        const realTimeMs = startDate.getTime() + (video.currentTime * 1000);
-        handleRealPlaybackTime(realTimeMs);
-      } catch (e) { /* getStartDate unsupported or not ready yet — skip silently */ }
-    }, 5000);
-  }
-
-  // Unambiguous-only freeze detection — see philosophy note above. Never
-  // fires while video.paused is true, for any reason.
+  // ============= FREEZE WATCHDOG =============
+  // Was missing entirely in v2 — only unambiguous case: video.paused is
+  // FALSE (it thinks it's playing) but currentTime has stopped advancing.
+  // Never touches genuine user-paused state, so it can't misfire on a
+  // real pause click.
+  let lastPlaybackTime = -1;
+  let frozenCycles = 0;
+  const FREEZE_CHECK_MS = 6000;
+  const FREEZE_CYCLES_BEFORE_RELOAD = 2; // ~12s of confirmed non-paused freeze
   setInterval(() => {
     if (document.hidden || video.seeking || video.paused) { frozenCycles = 0; return; }
     const t = video.currentTime;
     if (t === lastPlaybackTime && t > 0) {
       frozenCycles++;
       if (frozenCycles >= FREEZE_CYCLES_BEFORE_RELOAD) {
-        console.warn("Confirmed freeze while playing (not paused) — forcing reload.");
         frozenCycles = 0;
         loadPlayer();
       }
@@ -903,20 +593,119 @@
     lastPlaybackTime = t;
   }, FREEZE_CHECK_MS);
 
-  function togglePanelCollapse(panelId) {
-    const panel = document.getElementById(panelId);
-    if (!panel) return;
-    panel.classList.toggle("collapsed");
-    const icon = document.getElementById(`${panelId}-icon`);
-    if (icon) icon.textContent = panel.classList.contains("collapsed") ? "+" : "−";
+  // ============= CHANNEL SWITCHING =============
+  function switchChannel(delta){
+    const idx = CHANNEL_LIST.indexOf(CHANNEL_NUMBER);
+    const nextIdx = ((idx === -1 ? 0 : idx) + delta + CHANNEL_LIST.length) % CHANNEL_LIST.length;
+    CHANNEL_NUMBER = CHANNEL_LIST[nextIdx];
+    CHANNEL_ID_PREFIX = `C${CHANNEL_NUMBER}.`;
+    STREAM = `${STREAM_BASE_URL}/${CHANNEL_NUMBER}.m3u8?mode=segmenter&_=${Date.now()}`;
+
+    loading.style.display = "flex";
+    loading.classList.remove("error");
+    loading.classList.add("switching");
+    const loadingText = document.getElementById("loading-text");
+    if (loadingText) loadingText.textContent = "Switching...";
+    setTimeout(() => {
+      if (loading.classList.contains("switching") && loadingText) loadingText.textContent = "Please wait...";
+    }, 500);
+
+    currentTrackId = null; currentTrackTimestamp = null; currentTrackMeta = null;
+    recentlyPlayed = [];
+    xmltvProgrammes = [];
+    fetchXmltvProgrammes().then(list => xmltvProgrammes = list);
+    loadPlayer();
   }
 
-  // ---------- XMLTV schedule cache (fetched lazily, NOT polled) ----------
-  // Fetched once at boot, and re-fetched only on a genuine cache miss (e.g.
-  // schedule ran past what we have cached) or when the user opens the Guide.
-  // Previously this file was re-downloaded in full every 3 seconds forever,
-  // for every viewer, just to display 10 rows on manual click — this was
-  // the actual biggest bandwidth cost on the whole site.
+  // ============= SOUND TOGGLE =============
+  function updateSoundIcon(){
+    const btn = document.getElementById("sound-btn");
+    if (btn) btn.textContent = video.muted ? "🔇" : "🔊";
+  }
+
+  function toggleSound(){
+    video.muted = !video.muted;
+    if (!video.muted) { video.volume = 1.0; if (video.paused) video.play().catch(() => {}); }
+    updateSoundIcon();
+  }
+  video.addEventListener("volumechange", updateSoundIcon);
+
+  // ============= FULLSCREEN =============
+  function toggleFullscreen(){
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
+    else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen().catch(() => {}); }
+    else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
+  }
+
+  // ============= INFO (ABOUT THE TABLE) =============
+  // Real fix: this used to be a separate function that fetched
+  // content.json and set the About title/text — but loadContent()
+  // below does the exact same thing (and more: footer, siteFooter,
+  // loading text). Both ran back-to-back in bootChannel(), doubling
+  // the content.json fetch and the About DOM writes for no reason.
+  // loadContent() alone now covers everything this used to.
+  function toggleInfoModal(show){
+    const backdrop = document.getElementById("info-backdrop");
+    backdrop.classList.toggle("open", show);
+  }
+
+  function toggleFooterModal(show){
+    const backdrop = document.getElementById("footer-backdrop");
+    backdrop.classList.toggle("open", show);
+  }
+
+  // ============= CONTENT.JSON LOADER =============
+  async function loadContent(){
+    try {
+      const res = await fetch('content.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // ABOUT THE TABLE is controlled by the about section.
+      if (data.about) {
+        const titleEl = document.getElementById("info-title");
+        const textEl = document.getElementById("info-text");
+        if (titleEl && data.about.title) titleEl.textContent = data.about.title;
+        if (textEl && Array.isArray(data.about.paragraphs)) {
+          textEl.innerHTML = data.about.paragraphs.map(item => {
+            if (item.trim().startsWith('<') && item.trim().endsWith('>')) return item;
+            return `<p style="margin-bottom: 10px;">${item}</p>`;
+          }).join("");
+        }
+      }
+
+      // UNDER THE TABLE / INFO is controlled by the footer section.
+      if (data.footer) {
+        const footerTextEl = document.getElementById("footer-text");
+        const footerLines = [data.footer.text, data.footer.bugs, data.footer.launch].filter(Boolean);
+        if (footerTextEl) {
+          footerTextEl.innerHTML = footerLines.map(item => `<p style="margin-bottom: 10px;">${item}</p>`).join("");
+        }
+      }
+
+      // The bottom beta-tag tagline is its own dedicated field
+      // (siteFooter.copyright) — separate from the "Under the Table"
+      // footer content above. It was incorrectly reusing footer.text/
+      // bugs/launch, which is why it showed the same copy as the
+      // "Under the Table" modal instead of its own copyright lines.
+      if (Array.isArray(data.siteFooter?.copyright) && data.siteFooter.copyright.length) {
+        const siteFooterEl = document.getElementById("site-footer-copy");
+        const lines = data.siteFooter.copyright;
+        if (siteFooterEl) siteFooterEl.textContent = lines[Math.floor(Math.random() * lines.length)];
+      } else if (typeof data.siteFooter?.copyright === "string" && data.siteFooter.copyright) {
+        const siteFooterEl = document.getElementById("site-footer-copy");
+        if (siteFooterEl) siteFooterEl.textContent = data.siteFooter.copyright;
+      }
+
+      // Loading message is controlled by the loading section.
+      if (data.loading?.text) {
+        const loadingTextEl = document.getElementById("loading-text");
+        if (loadingTextEl) loadingTextEl.textContent = data.loading.text;
+      }
+    } catch (e) {}
+  }
+
+  // ============= XMLTV / EPG =============
   function parseXmltvDate(str){
     if (!str) return null;
     const cleanStr = str.trim();
@@ -940,13 +729,11 @@
     return `https://bandcamp.com/search?q=${encodeURIComponent(query)}`;
   }
 
-  const DEFAULT_ACRONYMS = ["mf", "doom", "czarface", "prof", "madvillain", "dj", "mc", "xl", "tv", "uk", "us"];
+  const DEFAULT_ACRONYMS = ["mf","doom","czarface","prof","madvillain","dj","mc","xl","tv","uk","us"];
+
   function toTitleCase(str){
     const acronyms = SETTINGS?.epg?.acronyms || DEFAULT_ACRONYMS;
-    return str.toLowerCase().replace(/\b\w+/g, word => {
-      if (acronyms.includes(word)) return word.toUpperCase();
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    });
+    return str.toLowerCase().replace(/\b\w+/g, word => acronyms.includes(word) ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1));
   }
 
   function stripVideoNoise(str){ return str.replace(/[\(\[][^\)\]]*(official|video|audio|lyric|hd|4k|remaster|visualizer)[^\)\]]*[\)\]]/gi, "").replace(/\s{2,}/g, " ").trim(); }
@@ -968,91 +755,34 @@
       return Array.from(xmlDoc.getElementsByTagName("programme"))
         .filter(p => (p.getAttribute("channel") || "").startsWith(CHANNEL_ID_PREFIX))
         .map(p => {
-          // ErsatzTV's Music Video Credits Mode (NFO-driven) now emits
-          // <title> as the artist and <sub-title> as the song separately —
-          // real structured data, not a combined "Artist - Song" string to
-          // split anymore. Falls back to dash-splitting <title> alone for
-          // any older/other entries that don't have a sub-title.
           const titleEl = p.getElementsByTagName("title")[0];
           const subTitleEl = p.getElementsByTagName("sub-title")[0];
           const rawTitle = cleanTitle(titleEl ? titleEl.textContent : "");
           const rawSubTitle = subTitleEl ? cleanTitle(subTitleEl.textContent) : "";
-
           let artist, song;
-          if (rawSubTitle) {
-            artist = toTitleCase(stripVideoNoise(rawTitle));
-            song = toTitleCase(stripVideoNoise(rawSubTitle));
-          } else {
-            const parsed = parseArtistSong(rawTitle);
-            artist = parsed.artist;
-            song = parsed.song;
-          }
-
-          return {
-            start: parseXmltvDate(p.getAttribute("start")),
-            stop: parseXmltvDate(p.getAttribute("stop")),
-            artist,
-            song
-          };
+          if (rawSubTitle) { artist = toTitleCase(stripVideoNoise(rawTitle)); song = toTitleCase(stripVideoNoise(rawSubTitle)); }
+          else { const parsed = parseArtistSong(rawTitle); artist = parsed.artist; song = parsed.song; }
+          return { start: parseXmltvDate(p.getAttribute("start")), stop: parseXmltvDate(p.getAttribute("stop")), artist, song };
         })
         .filter(p => p.start && p.stop)
         .sort((a, b) => a.start - b.start);
-    } catch (e) {
-      console.error("XMLTV fetch error:", e);
-      return [];
-    }
+    } catch (e) { return []; }
   }
 
   function findProgrammeAt(timestampMs){
     return xmltvProgrammes.find(p => timestampMs >= p.start.getTime() && timestampMs < p.stop.getTime());
   }
 
-  // ---------- Real playback-position track detection ----------
-  // Replaces the old wall-clock "guess how far behind live we are" offset
-  // system entirely. ErsatzTV embeds a real program_date_time timestamp in
-  // every HLS fragment (confirmed directly from its own ffmpeg command).
-  // hls.js exposes that per-fragment, tied to what THIS browser is actually
-  // decoding right now — so this is exact, self-correcting, and identical
-  // in behavior for Chrome and Firefox regardless of how far each one sits
-  // from the live edge. No manual tuning, ever, for this specific problem.
-  let lastAccurateUpdateAt = 0;
-  let lastLoadPlayerAt = 0; // set at the top of loadPlayer() — used to suppress
-                            // premature track updates right after a fresh
-                            // channel switch/restart, while things stabilize
-
-  async function handleRealPlaybackTime(timestampMs, isAccurateSource = true){
-    // Safety grace period: don't trust ANY timing signal — accurate or
-    // fallback — for 15s after a fresh loadPlayer() call. Real, observed bug:
-    // right after a channel switch/restart, Recently Played was updating
-    // ~45s too early. Root cause not fully confirmed (leading theory: HLS
-    // fragments briefly lack valid programDateTime right after a fresh
-    // start, silently causing the less-precise cache-offset fallback poll
-    // to drive updates instead) — this is a safe, conservative fix that
-    // prevents the symptom either way, without needing to guess a new
-    // cache-offset number blind.
-    if (Date.now() - lastLoadPlayerAt < 15000) return;
-
-    if (isAccurateSource) lastAccurateUpdateAt = Date.now();
-
+  async function handleRealPlaybackTime(timestampMs){
     let match = findProgrammeAt(timestampMs);
-
-    if (!match) {
-      // Cache miss — schedule may have run past what we have. Refetch once.
-      xmltvProgrammes = await fetchXmltvProgrammes();
-      match = findProgrammeAt(timestampMs);
-      if (!match) return;
-    }
-
+    if (!match) { xmltvProgrammes = await fetchXmltvProgrammes(); match = findProgrammeAt(timestampMs); if (!match) return; }
     const trackId = `${match.artist} - ${match.song}`;
-    if (trackId === currentTrackId) return; // no real change
-
+    if (trackId === currentTrackId) return;
     if (currentTrackId && currentTrackMeta) {
       recentlyPlayed.unshift({ ...currentTrackMeta, playedAt: Date.now() });
       const maxRecent = SETTINGS?.video?.maxRecent || 5;
       recentlyPlayed = recentlyPlayed.slice(0, maxRecent);
-      renderRecentlyPlayed();
     }
-
     currentTrackId = trackId;
     currentTrackTimestamp = timestampMs;
     currentTrackMeta = { artist: match.artist, song: match.song, id: trackId };
@@ -1060,135 +790,20 @@
     refreshLikeButtonState();
   }
 
-  // ---------- Guide ("Up Next") — fetched on demand only, when opened ----------
-  // ---------- Next Event countdown ----------
-  // REAL, current schedule only — nightly 8pm Top 10, every day. The
-  // full weekend/New Artists block schedule is planned but NOT yet
-  // running in ErsatzTV; showing it here would advertise events that
-  // aren't actually airing, which doesn't match this site's whole
-  // honesty ethos. Expand this back out once that real schedule build
-  // actually happens. day: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-  // (matches JS Date.getDay()). Times are in 24h local time for `timezone`.
-  const NEXT_EVENTS_SCHEDULE = [
-    { label: "🔥 TOP 10", day: 0, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 1, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 2, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 3, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 4, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 5, time: "20:00", timezone: "America/Edmonton" },
-    { label: "🔥 TOP 10", day: 6, time: "20:00", timezone: "America/Edmonton" },
-  ];
-
-  // Real current UTC offset (in minutes) for a given IANA timezone, using
-  // the browser's own timezone database via Intl — this correctly handles
-  // DST on its own, no manual EST/EDT math needed (the exact thing that
-  // bit us with the raw UTC timestamps earlier tonight).
-  function getTimezoneOffsetMinutes(timeZone, date){
-    const dtf = new Intl.DateTimeFormat("en-US", {
-      timeZone, hourCycle: "h23",
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit"
-    });
-    const parts = dtf.formatToParts(date).reduce((acc, p) => { acc[p.type] = p.value; return acc; }, {});
-    const asUTC = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
-    return (asUTC - date.getTime()) / 60000;
-  }
-
-  function findNextEvent(now = new Date()){
-    let soonest = null;
-    for (const evt of NEXT_EVENTS_SCHEDULE){
-      const offsetMin = getTimezoneOffsetMinutes(evt.timezone, now);
-      const [h, m] = evt.time.split(":").map(Number);
-      // "What day/time is it right now, in the event's timezone"
-      const localNowMs = now.getTime() + offsetMin * 60000;
-      const localNow = new Date(localNowMs);
-      const localDay = localNow.getUTCDay();
-      let daysUntil = (evt.day - localDay + 7) % 7;
-      const candidateLocalMs = Date.UTC(
-        localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate() + daysUntil, h, m, 0
-      );
-      let candidateUtcMs = candidateLocalMs - offsetMin * 60000;
-      if (candidateUtcMs <= now.getTime()) {
-        // already passed today/this occurrence — jump a full week ahead
-        candidateUtcMs += 7 * 24 * 60 * 60000;
-      }
-      if (soonest === null || candidateUtcMs < soonest.timeMs) {
-        soonest = { label: evt.label, timeMs: candidateUtcMs };
-      }
-    }
-    return soonest;
-  }
-
-  function formatCountdown(msRemaining){
-    if (msRemaining <= 0) return "starting now";
-    const totalMin = Math.floor(msRemaining / 60000);
-    const days = Math.floor(totalMin / 1440);
-    const hours = Math.floor((totalMin % 1440) / 60);
-    const mins = totalMin % 60;
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${mins}m`;
-    return `${mins}m`;
-  }
-
-  let nextEventInterval = null;
-  function updateNextEventBanner(){
-    const banner = document.getElementById("next-event-banner");
-    if (!banner) return;
-    const next = findNextEvent();
-    if (!next) { banner.style.display = "none"; return; }
-    const remaining = next.timeMs - Date.now();
-    banner.textContent = `Next: ${next.label} — starts in ${formatCountdown(remaining)}`;
-    banner.style.display = "block";
-  }
-
-  async function openGuide(){
-    toggleEpgModal(true);
-    updateNextEventBanner();
-    if (nextEventInterval) clearInterval(nextEventInterval);
-    nextEventInterval = setInterval(updateNextEventBanner, 30000);
-    // Always refetch fresh — this is a deliberate, infrequent user click,
-    // not constant polling, so there's no bandwidth concern here. The old
-    // `if (length === 0)` guard meant this only ever fetched ONCE per
-    // session (first load or first cache-miss), then silently reused that
-    // same stale snapshot forever — exactly why new songs weren't showing
-    // up and results looked inconsistent between checks.
-    const fresh = await fetchXmltvProgrammes();
-    if (fresh.length > 0) xmltvProgrammes = fresh; // only replace on a genuine successful fetch — a failed one shouldn't wipe out good cached data
-
-    // Was matching by song NAME via findIndex — but songs repeat throughout
-    // the day (confirmed in the real XMLTV data), and findIndex always
-    // returns the FIRST match, which could be an airing from hours ago,
-    // not the one actually playing now. Recently Played was always correct
-    // because it uses the real timestamp directly; Guide now does the same
-    // instead of an ambiguous name lookup.
-    const idx = currentTrackTimestamp != null
-      ? xmltvProgrammes.findIndex(p => currentTrackTimestamp >= p.start.getTime() && currentTrackTimestamp < p.stop.getTime())
-      : -1;
-    const upcoming = idx >= 0
-      ? xmltvProgrammes.slice(idx + 1, idx + 11)
-      : xmltvProgrammes.slice(0, 10);
-
-    upcomingProgrammes = upcoming.map(p => {
-      const meta = { artist: p.artist, song: p.song, id: `${p.artist} - ${p.song}` };
-      meta.href = getTrackUrl(meta);
-      return meta;
-    });
-    renderEpgList();
-  }
-
+  // ============= LIKES / FAVS =============
   const WISHLIST_KEY = "table-wishlist";
+
   function getClientId(){
     let id = localStorage.getItem("table-client-id");
-    if (!id) {
-      id = (crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-      localStorage.setItem("table-client-id", id);
-    }
+    if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : `c-${Date.now()}-${Math.random().toString(16).slice(2)}`); localStorage.setItem("table-client-id", id); }
     return id;
   }
   const CLIENT_ID = getClientId();
 
   function likeStorageKey(){ return `liked:${currentTrackId}`; }
+
   function refreshLikeButtonState(){ likeBtn.classList.toggle("liked", !!(currentTrackId && localStorage.getItem(likeStorageKey()) === "1")); }
+
   function loadWishlist(){ try { return JSON.parse(localStorage.getItem(WISHLIST_KEY) || "{}"); } catch(e){ return {}; } }
   function saveWishlist(board){ localStorage.setItem(WISHLIST_KEY, JSON.stringify(board)); }
 
@@ -1198,29 +813,37 @@
     entry.artist = meta.artist; entry.song = meta.song; entry.href = meta.href;
     entry.count = Math.max(0, entry.count + delta);
     if (entry.count === 0) delete board[meta.id]; else board[meta.id] = entry;
-    saveWishlist(board); renderWishlist();
+    saveWishlist(board);
   }
 
   function removeFromWishlist(trackId){
-    const board = loadWishlist();
-    delete board[trackId];
-    saveWishlist(board);
-    localStorage.removeItem(`liked:${trackId}`);
-    refreshLikeButtonState();
-    renderWishlist();
+    const board = loadWishlist(); delete board[trackId]; saveWishlist(board);
+    localStorage.removeItem(`liked:${trackId}`); refreshLikeButtonState(); renderWishlistList();
   }
 
-  function renderWishlist(){
+  async function toggleLike(){
+    if (!currentTrackId || !currentTrackMeta) return;
+    const key = likeStorageKey();
+    const alreadyLiked = localStorage.getItem(key) === "1";
+    const action = alreadyLiked ? "unlike" : "like";
+    if (alreadyLiked) { localStorage.removeItem(key); bumpWishlist(currentTrackMeta, -1); }
+    else { localStorage.setItem(key, "1"); bumpWishlist(currentTrackMeta, +1); }
+    refreshLikeButtonState();
+    fetch(`${SETTINGS?.api?.base || "/api"}/like`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trackId: currentTrackMeta.id, artist: currentTrackMeta.artist, song: currentTrackMeta.song, href: currentTrackMeta.href, action, clientId: CLIENT_ID })
+    })
+      .then(res => { if (res.ok) renderTop10List(); })
+      .catch(e => console.warn("Vote sync failed:", e));
+  }
+
+  function renderWishlistList(){
     const board = loadWishlist();
     const maxItems = SETTINGS?.ui?.wishlistMax || 10;
     const ranked = Object.entries(board).sort((a,b) => b[1].count - a[1].count).slice(0, maxItems);
     const list = document.getElementById("wishlist-list"); list.innerHTML = "";
-
-    if (ranked.length === 0) {
-      list.innerHTML = `<li class="top10-empty">No likes yet —<br>Pick your first!</li>`;
-      return;
-    }
-
+    if (ranked.length === 0) { list.innerHTML = `<li class="top10-empty">No favs yet — pick your first!</li>`; return; }
     ranked.forEach(([trackId, entry], i) => {
       const li = document.createElement("li"); li.className = "top10-item";
       li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${entry.count}</span><button class="wishlist-remove" title="Remove">&times;</button>`;
@@ -1229,48 +852,114 @@
     });
   }
 
-  function renderRecentlyPlayed(){
-    const list = document.getElementById("recent-list"); list.innerHTML = "";
-    const maxRecent = SETTINGS?.ui?.recentlyPlayedMax || 5;
-    const display = recentlyPlayed.slice(0, maxRecent);
-    if (display.length === 0) { list.innerHTML = `<li class="top10-empty">Nothing played yet<br>this session.</li>`; return; }
-    display.forEach(entry => {
-      const li = document.createElement("li"); li.className = "top10-item";
-      const minsAgo = Math.max(0, Math.round((Date.now() - entry.playedAt) / 60000));
-      li.innerHTML = `<span class="rank-badge recent-badge">&#9835;</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${minsAgo === 0 ? "just now" : `${minsAgo}m ago`}</span>`;
-      list.appendChild(li);
+  // ============= TOP 10 =============
+  async function renderTop10List(){
+    const list = document.getElementById("top10-list");
+    if (!list) return;
+    try {
+      const res = await fetch(`${SETTINGS?.api?.base || "/api"}/top?limit=${SETTINGS?.api?.topLimit || 10}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const ranked = await res.json(); list.innerHTML = "";
+      if (!ranked.length) { list.innerHTML = `<li class="top10-empty">No community likes yet!</li>`; return; }
+      ranked.forEach((entry, i) => {
+        const li = document.createElement("li"); li.className = "top10-item";
+        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${entry.count}</span>`;
+        list.appendChild(li);
+      });
+    } catch (e) { list.innerHTML = `<li class="top10-empty">Chart update pending</li>`; }
+  }
+
+  function openTop10(){ toggleTop10Modal(true); renderTop10List(); }
+  function toggleTop10Modal(show){ document.getElementById("top10-backdrop").classList.toggle("open", show); }
+
+  // ============= GUIDE =============
+  async function openGuide(){
+    toggleGuideModal(true);
+    const list = document.getElementById("guide-list");
+    list.innerHTML = `<li class="top10-empty">Loading...</li>`;
+
+    const fresh = await fetchXmltvProgrammes();
+    if (fresh.length > 0) xmltvProgrammes = fresh;
+
+    const idx = currentTrackTimestamp != null
+      ? xmltvProgrammes.findIndex(p => currentTrackTimestamp >= p.start.getTime() && currentTrackTimestamp < p.stop.getTime())
+      : -1;
+    const upcoming = idx >= 0 ? xmltvProgrammes.slice(idx + 1, idx + 11) : xmltvProgrammes.slice(0, 10);
+    upcomingProgrammes = upcoming.map(p => {
+      const meta = { artist: p.artist, song: p.song, id: `${p.artist} - ${p.song}` };
+      meta.href = getTrackUrl(meta);
+      return meta;
     });
+
+    renderGuideList();
   }
 
-  async function toggleLike(){
-    if (!currentTrackId || !currentTrackMeta) return;
-    const key = likeStorageKey();
-    const alreadyLiked = localStorage.getItem(key) === "1";
-    const action = alreadyLiked ? "unlike" : "like";
+  function renderGuideList(){
+    const list = document.getElementById("guide-list");
+    list.innerHTML = "";
 
-    if (alreadyLiked) { localStorage.removeItem(key); bumpWishlist(currentTrackMeta, -1); }
-    else { localStorage.setItem(key, "1"); bumpWishlist(currentTrackMeta, +1); }
-    refreshLikeButtonState();
+    list.innerHTML += `<li class="guide-now-label">♫ Recently Played</li>`;
+    if (recentlyPlayed.length === 0) {
+      list.innerHTML += `<li class="top10-empty">Nothing played yet this session.</li>`;
+    } else {
+      recentlyPlayed.forEach(entry => {
+        const li = document.createElement("li"); li.className = "top10-item";
+        const minsAgo = Math.max(0, Math.round((Date.now() - entry.playedAt) / 60000));
+        li.innerHTML = `<span class="rank-badge recent-badge">&#9835;</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${minsAgo === 0 ? "just now" : `${minsAgo}m ago`}</span>`;
+        list.appendChild(li);
+      });
+    }
 
-    fetch(`${SETTINGS?.api?.base || "/api"}/like`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trackId: currentTrackMeta.id, artist: currentTrackMeta.artist, song: currentTrackMeta.song, href: currentTrackMeta.href, action, clientId: CLIENT_ID })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        renderTop10(); // reflect the vote immediately, not up to 2 minutes later
-      })
-      .catch(e => console.warn("Backend vote sync failed:", e));
+    list.innerHTML += `<li class="guide-now-label">▶ Up Next</li>`;
+    if (upcomingProgrammes.length === 0) {
+      list.innerHTML += `<li class="top10-empty">Guide data not available yet.</li>`;
+    } else {
+      upcomingProgrammes.forEach((entry, i) => {
+        const li = document.createElement("li"); li.className = "top10-item";
+        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div>`;
+        list.appendChild(li);
+      });
+    }
   }
 
+  function openWishlist(){ toggleWishlistModal(true); renderWishlistList(); }
+  function toggleGuideModal(show){ document.getElementById("guide-backdrop").classList.toggle("open", show); }
+  function toggleWishlistModal(show){ document.getElementById("wishlist-backdrop").classList.toggle("open", show); }
+  function toggleMenuModal(show){ document.getElementById("menu-backdrop").classList.toggle("open", show); }
+
+  // ============= HANDEDNESS =============
+  function applyHandedness(){
+    const isRightHanded = localStorage.getItem('controlHandedness') === 'right';
+    document.body.classList.toggle('right-handed', isRightHanded);
+  }
+
+  function toggleHandedness(){
+    const isRightHanded = document.body.classList.contains('right-handed');
+    localStorage.setItem('controlHandedness', isRightHanded ? 'left' : 'right');
+    applyHandedness();
+  }
+  applyHandedness();
+
+  // ============= ROTATE NUDGE =============
+  function dismissRotateNudge(){
+    const el = document.getElementById("rotate-nudge");
+    if (el) el.classList.add("dismissed");
+    try { sessionStorage.setItem("rotate-nudge-dismissed", "1"); } catch (e) {}
+  }
+
+  (function initRotateNudge(){
+    try {
+      if (sessionStorage.getItem("rotate-nudge-dismissed") === "1") {
+        const el = document.getElementById("rotate-nudge");
+        if (el) el.classList.add("dismissed");
+      }
+    } catch (e) {}
+  })();
+
+  // ============= FIRST INTERACTION UNMUTE =============
   (function setupFirstInteractionUnmute() {
     function enableAudio() {
-      if (video) {
-        video.muted = false;
-        video.volume = 1.0;
-        if (video.paused) video.play().catch(() => {});
-      }
+      if (video) { video.muted = false; video.volume = 1.0; if (video.paused) video.play().catch(() => {}); }
       window.removeEventListener("click", enableAudio, true);
       window.removeEventListener("touchstart", enableAudio, true);
     }
@@ -1278,17 +967,42 @@
     window.addEventListener("touchstart", enableAudio, true);
   })();
 
-  // ---------- Welcome screen — JSON-driven, shown every page load ----------
-  // Different prompt each visit is intentional, not a bug — same "raw, live"
-  // feel as the theme/content system refreshing under viewers unannounced.
+  // ============= VIDEO CLICK (artist link) =============
+  function getVideoContentRect(){
+    const box = video.getBoundingClientRect();
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return box;
+    const boxRatio = box.width / box.height;
+    const contentRatio = vw / vh;
+    let width, height;
+    if (contentRatio > boxRatio) { width = box.width; height = box.width / contentRatio; }
+    else { height = box.height; width = box.height * contentRatio; }
+    const left = box.left + (box.width - width) / 2;
+    const top = box.top + (box.height - height) / 2;
+    return { left, top, right: left + width, bottom: top + height };
+  }
+
+  let videoClickTimer = null;
+  video.addEventListener("click", (e) => {
+    const r = getVideoContentRect();
+    const inPicture = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    if (!inPicture) return;
+    if (videoClickTimer) { clearTimeout(videoClickTimer); videoClickTimer = null; return; }
+    videoClickTimer = setTimeout(() => { videoClickTimer = null; if (currentTrackMeta?.href) window.open(currentTrackMeta.href, "_blank", "noopener"); }, 280);
+  });
+
+  video.addEventListener("dblclick", () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else if (video.requestFullscreen) video.requestFullscreen().catch(() => {});
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+  });
+
+  // ============= WELCOME SCREEN =============
   async function showWelcomeScreen(){
-    let prompts = ["Ready to tune in?"]; // fallback if welcome.json is unreachable
+    let prompts = ["Ready to tune in?"];
     try {
       const res = await fetch('welcome.json', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data.prompts) && data.prompts.length) prompts = data.prompts;
-      }
+      if (res.ok) { const data = await res.json(); if (Array.isArray(data.prompts) && data.prompts.length) prompts = data.prompts; }
     } catch (e) {}
     const question = prompts[Math.floor(Math.random() * prompts.length)];
     const textEl = document.getElementById('welcome-prompt-text');
@@ -1298,266 +1012,11 @@
 
   function handleWelcomeResponse(yes){
     document.getElementById('welcome-backdrop').classList.remove('open');
-    if (yes) {
-      // This click IS a genuine user gesture — safe to unmute directly here,
-      // same effect as the generic first-interaction listener above.
-      video.muted = false;
-      video.volume = 1.0;
-      if (video.paused) video.play().catch(() => {});
-    } else {
-      window.location.href = "https://duckduckgo.com";
-    }
-  }
-  showWelcomeScreen();
-
-  // ---------- Footer relocation (desktop vs. mobile) ----------
-  // Desktop wants the footer nested inside .main-col, right after the
-  // player, so its position is anchored to the player's height and
-  // unaffected by however tall the side panels grow. But .main-col also
-  // has order:-1 to jump to the front on mobile's stacked flex layout —
-  // and CSS `order` can't reach into a nested child to reposition it
-  // relative to the PARENT's siblings, so simply nesting it there would
-  // drag the footer up near the top on mobile instead of staying last.
-  // Genuinely needs real DOM relocation, not just CSS, to satisfy both.
-  const footerEl = document.getElementById("main-footer");
-  const mainColEl = document.querySelector(".main-col");
-  const pageGridEl = document.querySelector(".page-grid");
-  const desktopBreakpoint = window.matchMedia("(min-width: 1200px)");
-
-  function placeFooter(isDesktop){
-    if (!footerEl || !mainColEl || !pageGridEl) return;
-    if (isDesktop) {
-      mainColEl.appendChild(footerEl); // anchored to player height
-    } else {
-      pageGridEl.appendChild(footerEl); // last in mobile's stacked flex order
-    }
+    if (yes) { video.muted = false; video.volume = 1.0; if (video.paused) video.play().catch(() => {}); }
+    else { window.location.href = "https://duckduckgo.com"; }
   }
 
-  placeFooter(desktopBreakpoint.matches);
-  desktopBreakpoint.addEventListener("change", (e) => placeFooter(e.matches));
-
-  // Default panel open/closed state (desktop vs mobile) is now handled by
-  // tiny inline <script> tags placed directly after each panel's own HTML,
-  // not here. Real Cloudflare Web Analytics flagged a measurable CLS hit
-  // on right-panel-group — this function ran correctly, but only after the
-  // browser had already painted the raw HTML's collapsed default, since
-  // this whole script sits at the bottom of the page. The inline-per-panel
-  // approach closes that timing gap at the source instead of correcting
-  // it after the fact.
-
-  // ---------- Idle timer — activity-based, not elapsed-time ----------
-  // Deliberately NOT a flat "1 hour since page load" timer — someone
-  // actively engaging (voting, opening Guide, clicking anything) resets the
-  // clock and never sees this at all. Only a genuinely quiet tab — nobody
-  // clicking anything for a full hour — triggers the check.
-  let lastActivityAt = Date.now();
-  let idleCheckShownAt = null;
-  let IDLE_TIMEOUT_MS = 60 * 60 * 1000; // safe default (1hr) until settings resolve
-  const IDLE_GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 min to respond before stopping
-
-  function markActivity(){ lastActivityAt = Date.now(); }
-  window.addEventListener("click", markActivity, true);
-  window.addEventListener("touchstart", markActivity, true);
-  window.addEventListener("keydown", markActivity, true);
-
-  function showIdleCheck(){
-    idleCheckShownAt = Date.now();
-    video.pause();
-    document.getElementById('idle-check-backdrop').classList.add('open');
-  }
-
-  function handleIdleCheckResponse(){
-    document.getElementById('idle-check-backdrop').classList.remove('open');
-    idleCheckShownAt = null;
-    lastActivityAt = Date.now();
-    loadPlayer(); // soft reload — snap back to live rather than resume a stale paused frame
-  }
-
-  function stopForInactivity(){
-    document.getElementById('idle-check-backdrop').classList.remove('open');
-    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-    video.removeAttribute('src');
-    video.load();
-    showError("Stopped — no response after an hour of inactivity. Reload the page to resume.");
-    // Simple counter for the Financials page to eventually read and explain
-    // the real bandwidth-cost reasoning behind this feature.
-    try {
-      const key = 'idleStopCount';
-      const count = parseInt(localStorage.getItem(key) || '0', 10) + 1;
-      localStorage.setItem(key, String(count));
-    } catch (e) {}
-  }
-
-  setInterval(() => {
-    const now = Date.now();
-    if (idleCheckShownAt) {
-      if (now - idleCheckShownAt >= IDLE_GRACE_PERIOD_MS) stopForInactivity();
-      return;
-    }
-    if (now - lastActivityAt >= IDLE_TIMEOUT_MS) showIdleCheck();
-  }, 30000);
-
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && video.paused) video.play().catch(() => {});
-  });
-
-  // The live click-through link, back on the table now that timing is
-  // actually trustworthy (FRAG_CHANGED fires on real fragment timestamps,
-  // race condition with the fallback poll fixed) instead of the guessed
-  // wall-clock offset that made this too unreliable to trust before.
-  let videoClickTimer = null;
-  video.addEventListener("click", () => {
-    if (videoClickTimer) {
-      // Second click arrived fast — this is actually a double-click headed
-      // for fullscreen below, not a real single click. Bail out.
-      clearTimeout(videoClickTimer);
-      videoClickTimer = null;
-      return;
-    }
-    videoClickTimer = setTimeout(() => {
-      videoClickTimer = null;
-      if (currentTrackMeta?.href) window.open(currentTrackMeta.href, "_blank", "noopener");
-    }, 280);
-  });
-
-  video.addEventListener("dblclick", () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else if (video.requestFullscreen) {
-      video.requestFullscreen().catch(() => {});
-    } else if (video.webkitEnterFullscreen) {
-      video.webkitEnterFullscreen(); // iOS Safari
-    }
-  });
-
-  // ---------- Session uptime display ----------
-  // Shows on mouse movement, fades after a few seconds idle — same feel as
-  // the native controls' auto-hiding progress bar, just for uptime instead.
-  const uptimeEl = document.getElementById("session-uptime");
-  const screenEl = document.querySelector(".screen");
-  let uptimeHideTimer = null;
-
-  function formatUptime(ms){
-    const totalSeconds = Math.floor(ms / 1000);
-    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
-    const s = String(totalSeconds % 60).padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  }
-
-  setInterval(() => {
-    if (uptimeEl) uptimeEl.textContent = formatUptime(Date.now() - sessionStartAt);
-  }, 1000);
-
-  if (screenEl && uptimeEl) {
-    screenEl.addEventListener("mousemove", () => {
-      uptimeEl.classList.add("visible");
-      clearTimeout(uptimeHideTimer);
-      uptimeHideTimer = setTimeout(() => uptimeEl.classList.remove("visible"), 3000);
-    });
-  }
-
-  function renderEpgList(){
-    const list = document.getElementById("epg-list"); if (!list) return; list.innerHTML = ""; list.scrollTop = 0;
-    if (upcomingProgrammes.length === 0) { list.innerHTML = `<li class="top10-empty">Guide data not available yet.</li>`; return; }
-    upcomingProgrammes.forEach((entry, i) => {
-      const li = document.createElement("li"); li.className = "top10-item";
-      li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div>`;
-      list.appendChild(li);
-    });
-  }
-
-  function toggleEpgModal(show){
-    document.getElementById("epg-backdrop").classList.toggle("open", show);
-    if (!show && nextEventInterval) { clearInterval(nextEventInterval); nextEventInterval = null; }
-  }
-  function toggleInfoModal(show){ document.getElementById("info-backdrop").classList.toggle("open", show); }
-  function toggleMenuModal(show){ document.getElementById("menu-backdrop").classList.toggle("open", show); }
-
-  // ---------- Control panel handedness ----------
-  // Default (no class) = left-handed layout, the current standard look.
-  // .right-handed on <body> flips both the control panel position AND the
-  // player-frame padding that makes room for it — applied to body (not
-  // player-frame itself) so the CSS descendant selectors for both elements
-  // resolve correctly.
-  function applyHandedness(){
-    const isRightHanded = localStorage.getItem('controlHandedness') === 'right';
-    document.body.classList.toggle('right-handed', isRightHanded);
-  }
-  function toggleHandedness(){
-    const isRightHanded = document.body.classList.contains('right-handed');
-    localStorage.setItem('controlHandedness', isRightHanded ? 'left' : 'right');
-    applyHandedness();
-  }
-  applyHandedness();
-
-  // Auto-close any open modal when a link inside it is clicked. Delegated
-  // on the stable .info-modal container (not individual links) since some
-  // modals rebuild their contents dynamically via innerHTML — a listener
-  // attached directly to a link at page-load would never catch links added
-  // later.
-  document.querySelectorAll('.info-modal').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target.closest('a')) {
-        toggleEpgModal(false);
-        toggleInfoModal(false);
-        toggleMenuModal(false);
-      }
-    });
-  });
-  function handlePlayDialClick(){ openGuide(); }
-
-  async function renderTop10(){
-    const list = document.getElementById("top10-inline-list");
-    const maxItems = SETTINGS?.ui?.communityTopMax || 10;
-    try {
-      const res = await fetch(`${SETTINGS?.api?.base || "/api"}/top?limit=${SETTINGS?.api?.topLimit || 10}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const ranked = await res.json(); list.innerHTML = "";
-
-      const items = ranked.slice(0, maxItems);
-      items.forEach((entry, i) => {
-        const li = document.createElement("li"); li.className = "top10-item";
-        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><a href="${entry.href}" target="_blank" rel="noopener">${entry.song}</a><span class="top10-artist">${entry.artist || ""}</span></div><span class="top10-count">${entry.count}</span>`;
-        list.appendChild(li);
-      });
-
-      for (let i = items.length; i < maxItems; i++) {
-        const li = document.createElement("li"); li.className = "top10-item empty-slot";
-        li.innerHTML = `<span class="rank-badge">${i + 1}</span><div class="top10-meta"><span class="top10-artist">${i === 0 ? "No community likes yet!" : "—"}</span></div>`;
-        list.appendChild(li);
-      }
-    } catch (e) {
-      list.innerHTML = `<li class="top10-empty">Chart update pending</li>`;
-    }
-  }
-
-  async function loadContent() {
-    try {
-      const res = await fetch('content.json', { cache: 'no-store' });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.about?.title) document.getElementById("about-title").innerHTML = data.about.title;
-      if (data.about?.paragraphs) document.getElementById("about-content").innerHTML = data.about.paragraphs.map(p => `<p>${p}</p>`).join("\n");
-      if (data.footer) {
-        if (data.footer.text) utTitle.textContent = data.footer.text;
-        if (data.footer.bugs) utBugs.textContent = data.footer.bugs;
-        if (data.footer.launch) utLaunch.textContent = data.footer.launch;
-      }
-      if (data.loading?.text) loading.textContent = data.loading.text;
-      // Real, randomized footer tagline — same pattern as Welcome
-      // Prompts. Supports a real array (one random line shown per
-      // page load); falls back to a single string for backward
-      // compatibility if content.json still has the old format.
-      if (Array.isArray(data.siteFooter?.copyright) && data.siteFooter.copyright.length) {
-        const lines = data.siteFooter.copyright;
-        document.getElementById("site-footer-copy").textContent = lines[Math.floor(Math.random() * lines.length)];
-      } else if (typeof data.siteFooter?.copyright === "string" && data.siteFooter.copyright) {
-        document.getElementById("site-footer-copy").textContent = data.siteFooter.copyright;
-      }
-    } catch (e) {}
-  }
-
+  // ============= THEME LOADER =============
   async function loadTheme() {
     try {
       const res = await fetch('theme.json', { cache: 'no-store' });
@@ -1569,100 +1028,57 @@
       if (theme.colors) Object.entries(theme.colors).forEach(([k, v]) => root.style.setProperty(k, v));
       if (theme.fonts) Object.entries(theme.fonts).forEach(([k, v]) => root.style.setProperty(k, v));
       if (theme.player) {
-        const p = theme.player;
-        if (p['border-color']) root.style.setProperty('--player-border-color', p['border-color']);
-        if (p['border-width']) root.style.setProperty('--player-border-width', p['border-width']);
-        if (p['border-radius']) root.style.setProperty('--player-border-radius', p['border-radius']);
-        if (p['shadow']) root.style.setProperty('--player-shadow', p['shadow']);
-        if (p['screen-border']) root.style.setProperty('--screen-border', p['screen-border']);
-        if (p['screen-radius']) root.style.setProperty('--screen-radius', p['screen-radius']);
+        if (theme.player["border-color"]) root.style.setProperty("--player-border-color", theme.player["border-color"]);
+        if (theme.player["border-width"]) root.style.setProperty("--player-border-width", theme.player["border-width"]);
+        if (theme.player["border-radius"]) root.style.setProperty("--player-border-radius", theme.player["border-radius"]);
+        if (theme.player["shadow"]) root.style.setProperty("--player-shadow", theme.player["shadow"]);
       }
-      // Wallpaper is now handled server-side by the config manager
-      // (real file swap via SFTP, same proven pattern as Emergency
-      // Mode) — not by client-side JS. Two different JS/CSS approaches
-      // were tried here and neither behaved reliably; reverted to the
-      // original, always-worked single wallpaper.jpg reference.
     } catch (e) {}
   }
 
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { toggleInfoModal(false); toggleEpgModal(false); toggleMenuModal(false); } });
+  // ============= KEYBOARD SHORTCUTS =============
+  document.addEventListener("keydown", e => { 
+    if (e.key === "Escape") { 
+      toggleGuideModal(false); 
+      toggleTop10Modal(false); 
+      toggleWishlistModal(false); 
+      toggleMenuModal(false);
+      const infoBackdrop = document.getElementById("info-backdrop");
+      if (infoBackdrop.classList.contains("open")) toggleInfoModal(false);
+      const footerBackdrop = document.getElementById("footer-backdrop");
+      if (footerBackdrop.classList.contains("open")) toggleFooterModal(false);
+    } 
+  });
+  document.querySelectorAll('.info-modal').forEach(modal => {
+    modal.addEventListener('click', (e) => { if (e.target.closest('a')) { toggleGuideModal(false); toggleTop10Modal(false); toggleWishlistModal(false); toggleMenuModal(false); toggleInfoModal(false); toggleFooterModal(false); } });
+  });
 
-  renderWishlist();
-  renderRecentlyPlayed();
-
-  async function bootChannel() {
-    // Real fix — artist-links.json and content.json don't actually
-    // depend on settings.json or each other; only XMLTV_URL genuinely
-    // needs SETTINGS resolved first (it reads SETTINGS.epg.url).
-    // Running the independent fetches in parallel, instead of one
-    // after another, removes real, stacked network latency that was
-    // delaying the guide showing correct data for several seconds on
-    // first load.
-    const linkPromise = fetch('artist-links.json', { cache: 'no-store' })
-      .then(res => res.ok ? res.json() : null)
-      .catch(() => null);
-
+  // ============= BOOT =============
+  async function bootChannel(){
+    const linkPromise = fetch('artist-links.json', { cache: 'no-store' }).then(res => res.ok ? res.json() : null).catch(() => null);
     await loadSettings();
     lastKnownReloadSignal = SETTINGS?.forceReloadSignal || 0;
     resolveStreamConfig();
     loadTheme();
-
-    const [linkResult, , xmltvResult] = await Promise.all([
-      linkPromise,
-      loadContent(),
-      fetchXmltvProgrammes()
-    ]);
-
+    await loadContent();
+    showWelcomeScreen();
+    const [linkResult, xmltvResult] = await Promise.all([linkPromise, fetchXmltvProgrammes()]);
     if (linkResult) artistLinkOverrides = linkResult;
     xmltvProgrammes = xmltvResult;
-    renderTop10();
-
-    setInterval(renderRecentlyPlayed, 60000);
-    setInterval(renderTop10, SETTINGS?.api?.refreshIntervalMs || 120000);
-
-    // Live theme/content refresh — editing theme.json or content.json now
-    // reaches everyone currently watching within ~2 minutes, no page reload
-    // needed. Deliberately does NOT pause while a modal is open or check
-    // what the user's doing — the visible live shift is treated as a
-    // feature, not a glitch to guard against.
     setInterval(loadTheme, 120000);
-    setInterval(loadContent, 120000);
-    // Live wallpaper refresh — the config manager swaps wallpaper.jpg's
-    // actual CONTENT server-side (same filename every time), but an
-    // already-open tab has no reason to re-fetch a static image URL on
-    // its own. This just forces a fresh, cache-bypassed reload of the
-    // SAME filename on the same interval as the theme/content refresh
-    // above — deliberately NOT theme-aware, doesn't decide which file to
-    // load (that's what caused real cross-browser issues in an earlier
-    // attempt). Always just re-shows whatever's actually on the server
-    // right now.
+    setInterval(loadContent, 180000);
     setInterval(() => {
       document.body.style.backgroundImage = `url('/wallpaper.jpg?_=${Date.now()}')`;
     }, 120000);
-    // Real, lightweight Emergency Mode check — closes a real, confirmed
-    // gap: the theme/content/wallpaper refreshes above only re-fetch
-    // data from INSIDE the already-loaded page, they never re-request
-    // the root document itself. Emergency Mode is a real, server-side
-    // FILE SWAP — only a genuinely fresh root request shows it. Without
-    // this, a viewer who simply waits during an outage might never
-    // actually see Emergency Mode activate, only someone who manually
-    // refreshes (F5) would. A full periodic reload would fix that, but
-    // would also re-trigger the Welcome Prompt age-gate every cycle —
-    // a real, bad experience for someone already legitimately
-    // watching. This checks ONLY for the real marker file's existence
-    // (cheap, no page impact) and only escalates to a real, full
-    // reload in the one specific case that actually needs it.
-    //
-    // Real, second purpose, added Aug 17: this same ping is also how the
-    // `viewers`/`viewerstotal` VPS functions count real distinct visitors
-    // (via the `cid` query param below) — see DEPLOYMENT_MANUAL.md
-    // Section 16. It used to ONLY fire inside the interval, meaning the
-    // first ping never went out until 3 minutes after page load — any
-    // real visit shorter than that (a quick look, a Reddit bounce) never
-    // logged anything at all, invisible to both counters. Fired once
-    // immediately here too, so every real visit is counted at least
-    // once, however short — the 3-minute interval below still handles
-    // the ongoing "still here" signal exactly as before.
+
+    // Emergency-mode check + viewer-count ping. HEAD request (not GET —
+    // GET was downloading the full marker page body for nothing), checks
+    // res.ok before reloading (was reloading unconditionally on every
+    // tick), and carries the client's uniqueId (cid) so the VPS
+    // viewers/viewerstotal counters can attribute this ping to a real
+    // distinct visitor — that param was missing entirely, which is what
+    // broke viewer-alias counting. Fired once immediately (not just on
+    // the interval) so a short visit still gets counted at least once.
     const emergencyCheck = async () => {
       try {
         const res = await fetch(`/index_EmergON.html?_=${Date.now()}&cid=${CLIENT_ID}`, { cache: "no-store", method: "HEAD" });
@@ -1671,16 +1087,15 @@
     };
     emergencyCheck();
     setInterval(emergencyCheck, 180000);
-    // Settings refresh too, same pattern — lets things like cacheOffsetSeconds
-    // take effect live from the config app without needing a page reload.
-    // ALSO checks for a remote "push channel to everyone" signal: if the
-    // config app bumped forceReloadSignal (e.g., to cut over to a new
-    // channel for every viewer), do a full page reload — same reliability
-    // as a manual F5, since we already know that's the one method proven
-    // to correctly pick up a new channel/stream config. Up to 2 minutes of
-    // delay per viewer, not instant — a true instant push would need a
-    // live server connection (WebSockets), a real architecture change not
-    // worth it just for this.
+
+    // Real "push channel to everyone" signal — this is what the config
+    // manager's Settings-tab "Push Channel to Everyone" button actually
+    // relies on for a programming cutover: it bumps forceReloadSignal in
+    // settings.json, and every connected viewer's browser picks that up
+    // here within ~2 minutes and force-reloads to the new channel — same
+    // reliability as everyone manually hitting F5, without needing to
+    // ask them to. Was present on the classic site but missing entirely
+    // from v2 until now.
     setInterval(async () => {
       await loadSettings();
       const signal = SETTINGS?.forceReloadSignal || 0;
@@ -1689,21 +1104,6 @@
       }
     }, 120000);
 
-    // Fallback safety net — genuinely last-resort now, not a parallel racer.
-    // FRAG_CHANGED is now confirmed to actually fire (a separate bug was
-    // silently preventing hls.js from ever loading at all — fixed earlier).
-    // Running this poll unconditionally alongside FRAG_CHANGED caused a real
-    // bug: both independently call handleRealPlaybackTime with slightly
-    // different timestamp estimates, and when they landed on different
-    // programmes, each one "corrected" the other back and forth — flooding
-    // Recently Played with just the last 2 songs oscillating. This now only
-    // acts if the accurate source has gone silent for 20+ seconds.
-    const FALLBACK_SILENCE_THRESHOLD_MS = 20000;
-    setInterval(() => {
-      if (Date.now() - lastAccurateUpdateAt < FALLBACK_SILENCE_THRESHOLD_MS) return;
-      const estimatedNow = Date.now() - ((SETTINGS?.video?.cacheOffsetSeconds || 55) * 1000);
-      handleRealPlaybackTime(estimatedNow, false);
-    }, 4000);
     loadPlayer();
   }
 
