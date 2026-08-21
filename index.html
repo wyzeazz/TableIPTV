@@ -104,7 +104,7 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,.65); }
     50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
   }
-  .info-toggle.flash { animation: info-flash 1.2s ease-out 4; }
+  .info-toggle.flash { animation: info-flash 1.2s ease-out 8; }
 
   .overlay-controls {
     position: fixed;
@@ -655,6 +655,12 @@
   }
 
   // ============= CONTENT.JSON LOADER =============
+  // Tracks the last-seen "Under the Table" footer content (text/bugs/
+  // launch) so a genuine change pushed from the config app can re-trigger
+  // the info button's flash for anyone already sitting on the site — not
+  // just first-time page loads.
+  let lastFooterSignature = null;
+
   async function loadContent(){
     try {
       const res = await fetch('content.json', { cache: 'no-store' });
@@ -681,6 +687,24 @@
         if (footerTextEl) {
           footerTextEl.innerHTML = footerLines.map(item => `<p style="margin-bottom: 10px;">${item}</p>`).join("");
         }
+
+        // Real update signal: once we've already loaded footer content once
+        // this session, a genuine change to text/bugs/launch means the
+        // founder pushed a real update from the config app — re-flash the
+        // info button so anyone already watching notices, the same way a
+        // first-time visitor does on page load. Skipped on the very first
+        // load since the static "flash" class in the HTML already covers
+        // that case.
+        const signature = JSON.stringify(data.footer);
+        if (lastFooterSignature !== null && signature !== lastFooterSignature) {
+          const infoBtn = document.getElementById("info-btn");
+          if (infoBtn) {
+            infoBtn.classList.remove("flash");
+            void infoBtn.offsetWidth; // force reflow so the animation restarts cleanly
+            infoBtn.classList.add("flash");
+          }
+        }
+        lastFooterSignature = signature;
       }
 
       // The bottom beta-tag tagline is its own dedicated field
@@ -937,6 +961,7 @@
     const isRightHanded = document.body.classList.contains('right-handed');
     localStorage.setItem('controlHandedness', isRightHanded ? 'left' : 'right');
     applyHandedness();
+    positionSideControlPanel();
   }
   applyHandedness();
 
@@ -981,6 +1006,49 @@
     const top = box.top + (box.height - height) / 2;
     return { left, top, right: left + width, bottom: top + height };
   }
+
+  // ============= SIDE CONTROL PANEL — LOCKED TO PLAYER EDGE =============
+  // Real, reported bug: in the landscape/short-screen layout the overlay
+  // control panel becomes a vertical strip pinned to a FIXED offset from
+  // the window edge (left: 68px in CSS). But the video itself is
+  // letterboxed via object-fit:contain, so its actual rendered edge moves
+  // independently as the window is resized — stretching the window drags
+  // the panel away from the video, shrinking it slides the video's edge
+  // underneath the panel. This tracks the video's real edge (same rect
+  // math already used for in-picture click detection above) and pins the
+  // panel's left/right directly against it instead of a fixed viewport
+  // offset, so it stays visually attached to the player at any width.
+  // Only active in the same landscape/short-screen breakpoint the CSS
+  // side-layout rule uses — outside that, inline overrides are cleared so
+  // the normal bottom-bar CSS layout applies untouched.
+  const sideLayoutQuery = window.matchMedia("(orientation: landscape) and (max-height: 500px)");
+  const overlayControlsEl = document.querySelector(".overlay-controls");
+
+  function positionSideControlPanel(){
+    if (!overlayControlsEl) return;
+    if (!sideLayoutQuery.matches) {
+      overlayControlsEl.style.left = "";
+      overlayControlsEl.style.right = "";
+      return;
+    }
+    const rect = getVideoContentRect();
+    const isRightHanded = document.body.classList.contains("right-handed");
+    const panelWidth = overlayControlsEl.offsetWidth || 60;
+    const gap = 6;
+
+    if (isRightHanded) {
+      overlayControlsEl.style.left = "auto";
+      overlayControlsEl.style.right = `${Math.max(0, window.innerWidth - rect.right - gap - panelWidth)}px`;
+    } else {
+      overlayControlsEl.style.right = "auto";
+      overlayControlsEl.style.left = `${Math.max(0, rect.left - panelWidth - gap)}px`;
+    }
+  }
+
+  window.addEventListener("resize", positionSideControlPanel);
+  sideLayoutQuery.addEventListener("change", positionSideControlPanel);
+  video.addEventListener("loadedmetadata", positionSideControlPanel);
+  video.addEventListener("resize", positionSideControlPanel);
 
   let videoClickTimer = null;
   video.addEventListener("click", (e) => {
@@ -1105,6 +1173,7 @@
     }, 120000);
 
     loadPlayer();
+    positionSideControlPanel();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootChannel);
