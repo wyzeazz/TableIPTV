@@ -2,4 +2,4 @@ User-agent: anthropic-ai
 Disallow: /
 
 User-agent: Googlebot
-Disallow: /
+Allow: /
