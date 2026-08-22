@@ -764,6 +764,31 @@
   const OFFLINE_RETRY_MAX_MS = 300000; // cap backoff at 5 min so it never gives up permanently
   let offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
 
+  // Real, reported bug (Aug 21): "Stream Offline — retrying automatically"
+  // often shows up on a real FIRST page load and needs a manual refresh to
+  // clear, even though the stream is genuinely fine. Root cause: on a cold
+  // page load, the very first manifest fetch can hit a transient blip
+  // (Bunny's edge doing a cold pull from origin, a brief TLS/DNS hiccup,
+  // ErsatzTV not instantly ready) — hls.js can rack up
+  // MAX_CONSECUTIVE_FATAL_ERRORS (5) network errors within a couple
+  // seconds of each other, well before a real outage would ever do that,
+  // and then falls into the same 30s+ backoff used for a genuine outage.
+  // That backoff is the right call for an ACTUAL offline channel, but it's
+  // way too slow/scary for what's usually just first-paint jitter.
+  //
+  // Fix: a separate, faster "cold start" retry path, using the
+  // coldStartMaxAttempts / coldStartIntervalMs settings.json fields
+  // (same fix already shipped in index.html on Aug 21). While isColdStart
+  // is true (i.e. this session has never once gotten a real
+  // MANIFEST_PARSED), a fatal network error just retries quickly and
+  // quietly — no scary "Stream Offline" text, just the normal loading
+  // spinner — instead of counting toward the slow-backoff path. Once
+  // either a real manifest parses (real success) or the cold-start
+  // attempt budget is exhausted (real, sustained problem), it falls
+  // through to the existing, proven offline/backoff behavior unchanged.
+  let isColdStart = true;
+  let coldStartAttempts = 0;
+
   function loadPlayer(){
     // Resets on every call — fresh boot, freeze-recovery, network-error
     // backoff retry, idle-timer resume. That's intentional: this is a real,
@@ -816,6 +841,7 @@
       video.play().catch(() => {});
       consecutiveFatalErrors = 0; // a successful parse means we're genuinely back
       offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS; // reset backoff too
+      isColdStart = false; // a real, successful parse — cold-start fast-retry path is done for this session
     });
 
     // Real-time track detection — tied to the actual fragment this browser
@@ -835,6 +861,30 @@
           break;
         case Hls.ErrorTypes.NETWORK_ERROR:
           consecutiveFatalErrors++;
+
+          // Cold-start fast path — never shown "Stream Offline" to a real
+          // human yet, still within the fast-retry budget.
+          if (isColdStart) {
+            const maxAttempts = SETTINGS?.video?.coldStartMaxAttempts || 8;
+            const intervalMs = SETTINGS?.video?.coldStartIntervalMs || 2000;
+            coldStartAttempts++;
+            if (coldStartAttempts < maxAttempts) {
+              hlsInstance.destroy();
+              hlsInstance = null;
+              video.removeAttribute("src");
+              video.load();
+              // Deliberately NOT showError() here — this is normal
+              // first-load jitter, not a real outage; keep the calm
+              // default loading state instead of alarming text.
+              setTimeout(() => { loadPlayer(); }, intervalMs);
+              return;
+            }
+            // Cold-start budget exhausted — this is now a real, sustained
+            // problem, not first-load jitter. Fall through to the normal
+            // offline/backoff path below, permanently, for this session.
+            isColdStart = false;
+          }
+
           if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
             // Stop the TIGHT retry loop — a real source outage shouldn't
             // hammer the server every few seconds forever. But this must
