@@ -95,16 +95,43 @@
     display: flex; align-items: center; justify-content: center;
   }
 
+  /* Real, reported bug (Aug 22): as the window narrows, the corner
+     buttons and the overlay-controls panel didn't know about each
+     other's real footprint. First attempt moved the corner buttons
+     out of the panel's way — wrong call: the founder wants the corner
+     buttons to always stay put in their true corners (that's their
+     whole point), and instead have the PANEL be the one that yields.
+     This only applies to the default, bottom-centered layout — in
+     side-panel/landscape mode the panel stays locked to the video's
+     edge via positionSideControlPanel() and never shrinks, even if it
+     touches a corner button. In default mode, on a real overlap,
+     constrainControlPanel() caps the panel's own max-width and, if
+     that's still not enough room, adds .panel-compact as a fallback
+     state — smaller dials, tighter gaps, same content — and it never,
+     under any real amount of squeezing, slides over the actual video. */
+  .overlay-controls.panel-compact {
+    gap: 4px !important;
+    padding: 6px 5px !important;
+  }
+  .panel-compact .dial-label { font-size: 6px !important; margin-bottom: 1px !important; }
+  .panel-compact .dial,
+  .panel-compact .like-dial { width: 24px !important; height: 24px !important; font-size: 11px !important; }
+  .panel-compact .chan-row { gap: 3px !important; }
+  .panel-compact .chan-dial { width: 18px !important; height: 18px !important; font-size: 9px !important; }
+
   /* Real, attention-drawing pulse on page load — nudges first-time
      visitors to actually click the info button and see the update
-     notes, instead of it sitting there unnoticed. Runs a fixed number
-     of pulses then stops on its own (not an infinite loop) and also
-     stops immediately the moment someone actually clicks it. */
+     notes, instead of it sitting there unnoticed. Real change (Aug 23):
+     was capped at 8 pulses and stopping on its own; founder wants it to
+     keep flashing until someone actually notices and clicks it, so now
+     it loops indefinitely — it still stops immediately the moment
+     someone actually clicks it (the onclick handler removes the
+     "flash" class), same as before. */
   @keyframes info-flash {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,.65); }
     50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
   }
-  .info-toggle.flash { animation: info-flash 1.2s ease-out 8; }
+  .info-toggle.flash { animation: info-flash 1.2s ease-out infinite; }
 
   .overlay-controls {
     position: fixed;
@@ -119,7 +146,9 @@
     padding: 10px clamp(10px, 2.5vw, 18px);
     border-radius: 14px;
     backdrop-filter: blur(2px);
-    transition: background-color 0.8s ease;
+    transition: background-color 0.8s ease, max-width .12s ease;
+    max-width: calc(100vw - 32px);
+    overflow: hidden;
   }
   .control-group { display: flex; flex-direction: column; align-items: center; }
   .dial-label {
@@ -233,7 +262,7 @@
   .top10-list { list-style: none; margin: 0; padding: 8px; max-height: 320px; overflow-y: auto; }
   .top10-item { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed #ccc; min-height: 42px; }
   .top10-item:last-child { border-bottom: none; }
-  
+
   .top10-item:nth-child(even) { background-color: rgba(0, 0, 0, 0.03); }
 
   .rank-badge {
@@ -317,7 +346,7 @@
   <video id="tv" autoplay muted playsinline></video>
 </div>
 
-<button class="hamburger" onclick="toggleMenuModal(true)" aria-label="Menu">
+<button class="hamburger" id="hamburger-btn" onclick="toggleMenuModal(true)" aria-label="Menu">
   <span></span><span></span><span></span>
 </button>
 
@@ -509,6 +538,32 @@
   const OFFLINE_RETRY_MAX_MS = 300000;
   let offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
 
+  // Real, reported bug (Aug 21): "Stream Offline — retrying automatically"
+  // often shows up on a real FIRST page load and needs a manual refresh to
+  // clear, even though the stream is genuinely fine. Root cause: on a cold
+  // page load, the very first manifest fetch can hit a transient blip
+  // (Bunny's edge doing a cold pull from origin, a brief TLS/DNS hiccup,
+  // ErsatzTV not instantly ready) — hls.js can rack up
+  // MAX_CONSECUTIVE_FATAL_ERRORS (5) network errors within a couple
+  // seconds of each other, well before a real outage would ever do that,
+  // and then falls into the same 30s+ backoff used for a genuine outage.
+  // That backoff is the right call for an ACTUAL offline channel, but it's
+  // way too slow/scary for what's usually just first-paint jitter.
+  //
+  // Fix: a separate, faster "cold start" retry path, using the
+  // coldStartMaxAttempts / coldStartIntervalMs settings.json fields that
+  // already existed for exactly this (added to the config manager's
+  // Settings tab early on, but never actually wired up here until now).
+  // While isColdStart is true (i.e. this session has never once gotten a
+  // real MANIFEST_PARSED), a fatal network error just retries quickly and
+  // quietly — no scary "Stream Offline" text, just the normal loading
+  // spinner — instead of counting toward the slow-backoff path. Once
+  // either a real manifest parses (real success) or the cold-start
+  // attempt budget is exhausted (real, sustained problem), it falls
+  // through to the existing, proven offline/backoff behavior unchanged.
+  let isColdStart = true;
+  let coldStartAttempts = 0;
+
   function loadPlayer(){
     const hlsJsAvailable = typeof Hls !== "undefined" && Hls.isSupported();
 
@@ -537,6 +592,7 @@
       video.play().catch(() => {});
       consecutiveFatalErrors = 0;
       offlineRetryDelayMs = OFFLINE_RETRY_BASE_MS;
+      isColdStart = false; // a real, successful parse — cold-start fast-retry path is done for this session
     });
 
     hlsInstance.on(Hls.Events.FRAG_CHANGED, (event, data) => {
@@ -552,6 +608,28 @@
           break;
         case Hls.ErrorTypes.NETWORK_ERROR:
           consecutiveFatalErrors++;
+
+          // Cold-start fast path — never shown "Stream Offline" to a real
+          // human yet, still within the fast-retry budget.
+          if (isColdStart) {
+            const maxAttempts = SETTINGS?.video?.coldStartMaxAttempts || 8;
+            const intervalMs = SETTINGS?.video?.coldStartIntervalMs || 2000;
+            coldStartAttempts++;
+            if (coldStartAttempts < maxAttempts) {
+              hlsInstance.destroy(); hlsInstance = null;
+              video.removeAttribute("src"); video.load();
+              // Deliberately NOT showError() here — this is normal
+              // first-load jitter, not a real outage; keep the calm
+              // "Setting the TABLE..." spinner instead of alarming text.
+              setTimeout(() => { loadPlayer(); }, intervalMs);
+              return;
+            }
+            // Cold-start budget exhausted — this is now a real, sustained
+            // problem, not first-load jitter. Fall through to the normal
+            // offline/backoff path below, permanently, for this session.
+            isColdStart = false;
+          }
+
           if (consecutiveFatalErrors >= MAX_CONSECUTIVE_FATAL_ERRORS) {
             hlsInstance.destroy(); hlsInstance = null;
             video.removeAttribute("src"); video.load();
@@ -961,7 +1039,7 @@
     const isRightHanded = document.body.classList.contains('right-handed');
     localStorage.setItem('controlHandedness', isRightHanded ? 'left' : 'right');
     applyHandedness();
-    positionSideControlPanel();
+    refreshLayout();
   }
   applyHandedness();
 
@@ -1045,10 +1123,117 @@
     }
   }
 
-  window.addEventListener("resize", positionSideControlPanel);
-  sideLayoutQuery.addEventListener("change", positionSideControlPanel);
-  video.addEventListener("loadedmetadata", positionSideControlPanel);
-  video.addEventListener("resize", positionSideControlPanel);
+  // ============= CONTROL PANEL — YIELDS TO THE FIXED CORNER BUTTONS =============
+  // Real, reported bug (Aug 22): the overlay-controls panel and the
+  // fixed corner buttons didn't know about each other's real footprint,
+  // so on a narrow window one would slide over the other. Real, direct
+  // correction from the founder along the way: the corner buttons must
+  // always stay exactly in their true corners — it's the PANEL that
+  // yields, and (after further real, live-tested rounds) ONLY in the
+  // default bottom-centered layout; the landscape/side-panel layout
+  // (see constrainControlPanel() below) is deliberately left alone
+  // entirely, since its existing edge-lock was already correct and
+  // yielding there only broke it. Only fullscreenBtn/infoBtn are
+  // actually needed below — the panel never yields to hamburger/sound
+  // in the one layout this logic still touches.
+  const fullscreenBtn = document.getElementById("fullscreen-btn");
+  const infoBtn = document.getElementById("info-btn");
+  const PANEL_CORNER_GAP = 10;
+
+  // Real, plain rectangle-overlap test — used to check whether the
+  // panel would ACTUALLY collide with a given corner button before
+  // touching anything. Real, reported regression (Aug 22, round 1): the
+  // first version assumed a collision was possible any time the panel
+  // and a corner button were in the default bottom-centered layout,
+  // without checking whether they were even near the same row — on
+  // ordinary mobile portrait the portrait media query already pushes
+  // the panel well above the bottom corner buttons, so there was never
+  // a real collision there, but the panel was still being shrunk for
+  // one that didn't exist.
+  //
+  // Real, reported regression (Aug 22, round 2): even after switching
+  // to a real overlap check, using a real clearance GAP as the overlap
+  // threshold (instead of true pixel intersection) still counted normal
+  // portrait mode as a "collision" — the panel and a corner button
+  // legitimately sit within a few px of each other there by design,
+  // with no actual visual overlap, but being merely close was enough to
+  // trip the old gap-based check and shrink the panel anyway. Detection
+  // itself is always called with gap=0 now (true, literal pixel
+  // intersection only) — the "gap" parameter still exists so the SAME
+  // function can be reused, with a real clearance value, for other
+  // future overlap checks if ever needed, but this file only ever calls
+  // it at 0. Once a real overlap IS detected, PANEL_CORNER_GAP is still
+  // used separately, only then, to add real breathing room to the
+  // constrained position/size — never to the detection itself.
+  function rectsOverlap(a, b, gap){
+    return !(a.right + gap <= b.left || a.left - gap >= b.right || a.bottom + gap <= b.top || a.top - gap >= b.bottom);
+  }
+
+  function constrainControlPanel(){
+    if (!overlayControlsEl) return;
+    overlayControlsEl.style.maxWidth = "";
+    overlayControlsEl.classList.remove("panel-compact");
+
+    // Measure the panel's real, natural rect at its normal CSS position
+    // (any prior constraint was just cleared above) before deciding
+    // whether it actually needs to yield to anything.
+    const naturalRect = overlayControlsEl.getBoundingClientRect();
+
+    if (sideLayoutQuery.matches) {
+      // Landscape/short-screen mode (includes real mobile fullscreen):
+      // the panel is a vertical strip locked to the video's real edge
+      // via positionSideControlPanel, called just before this — that
+      // lock was already proven correct and is deliberately left fully
+      // alone here. Real, repeated regressions (Aug 22) from trying to
+      // also shrink/inset this panel away from the corner buttons in
+      // this mode — full-bleed fullscreen video leaves the panel
+      // sitting right up against those buttons, which correctly counts
+      // as a real overlap, but shrinking the panel to dodge it broke
+      // the one thing that was already working right: staying locked,
+      // at its normal size, to the player's edge. Real, final call: in
+      // this mode the panel always stays standard size and fully
+      // locked — any corner-button collision here is accepted as-is
+      // rather than fixed by touching the panel.
+      return;
+    }
+
+    // Default / bottom-centered mode: only cap the panel's width if it
+    // would genuinely overlap the fullscreen (bottom-left) or info
+    // (bottom-right) button at their real, current position — on most
+    // real screens (mobile portrait especially) the panel sits well
+    // clear of them vertically and this never triggers.
+    const overlapsFullscreen = fullscreenBtn && rectsOverlap(naturalRect, fullscreenBtn.getBoundingClientRect(), 0);
+    const overlapsInfo = infoBtn && rectsOverlap(naturalRect, infoBtn.getBoundingClientRect(), 0);
+    if (!overlapsFullscreen && !overlapsInfo) return; // real clearance already — leave it alone
+
+    if (fullscreenBtn && infoBtn) {
+      // Both buttons sit at symmetric insets, so the gap between them is
+      // itself centered — the panel's existing left:50%/translateX(-50%)
+      // centering still lines up correctly without needing to also move
+      // it left/right, only cap how wide it's allowed to get.
+      const leftBound = fullscreenBtn.getBoundingClientRect().right + PANEL_CORNER_GAP;
+      const rightBound = infoBtn.getBoundingClientRect().left - PANEL_CORNER_GAP;
+      const availableWidth = Math.max(60, rightBound - leftBound);
+      overlayControlsEl.style.maxWidth = `${availableWidth}px`;
+      if (overlayControlsEl.scrollWidth > availableWidth) {
+        overlayControlsEl.classList.add("panel-compact");
+      }
+    }
+  }
+
+  // Shared entry point so every real trigger (resize, orientation
+  // change, video metadata, handedness swap, boot) always repositions
+  // the panel against the video edge first, then constrains it against
+  // the corner buttons — keeps all three in sync instead of racing.
+  function refreshLayout(){
+    positionSideControlPanel();
+    constrainControlPanel();
+  }
+
+  window.addEventListener("resize", refreshLayout);
+  sideLayoutQuery.addEventListener("change", refreshLayout);
+  video.addEventListener("loadedmetadata", refreshLayout);
+  video.addEventListener("resize", refreshLayout);
 
   let videoClickTimer = null;
   video.addEventListener("click", (e) => {
@@ -1105,17 +1290,17 @@
   }
 
   // ============= KEYBOARD SHORTCUTS =============
-  document.addEventListener("keydown", e => { 
-    if (e.key === "Escape") { 
-      toggleGuideModal(false); 
-      toggleTop10Modal(false); 
-      toggleWishlistModal(false); 
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      toggleGuideModal(false);
+      toggleTop10Modal(false);
+      toggleWishlistModal(false);
       toggleMenuModal(false);
       const infoBackdrop = document.getElementById("info-backdrop");
       if (infoBackdrop.classList.contains("open")) toggleInfoModal(false);
       const footerBackdrop = document.getElementById("footer-backdrop");
       if (footerBackdrop.classList.contains("open")) toggleFooterModal(false);
-    } 
+    }
   });
   document.querySelectorAll('.info-modal').forEach(modal => {
     modal.addEventListener('click', (e) => { if (e.target.closest('a')) { toggleGuideModal(false); toggleTop10Modal(false); toggleWishlistModal(false); toggleMenuModal(false); toggleInfoModal(false); toggleFooterModal(false); } });
@@ -1173,7 +1358,7 @@
     }, 120000);
 
     loadPlayer();
-    positionSideControlPanel();
+    refreshLayout();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootChannel);
